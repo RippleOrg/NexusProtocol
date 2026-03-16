@@ -1,10 +1,13 @@
 pub mod add_fx_liquidity;
 pub mod cancel_fx_quote;
+pub mod check_collateral_health;
 pub mod create_escrow;
 pub mod dispute_escrow;
 pub mod execute_settlement;
 pub mod fund_escrow;
+pub mod fund_escrow_with_collateral;
 pub mod initialize_protocol;
+pub mod liquidate_collateral;
 pub mod post_fx_quote;
 pub mod refund_escrow;
 pub mod register_institution;

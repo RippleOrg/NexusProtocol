@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import ComplianceEventFeed from "@/components/compliance/ComplianceEventFeed";
 
 interface FxRate {
   pair: string;
@@ -251,6 +252,9 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* Live Compliance Event Feed */}
+      <ComplianceEventFeed maxRows={20} />
     </div>
   );
 }

@@ -184,4 +184,54 @@ pub mod nexus {
     ) -> Result<()> {
         revoke_kyc_record::handler(ctx, institution_id)
     }
+
+    /// Fund an escrow using tokenized commodity collateral (precious metals / RWA)
+    pub fn fund_escrow_with_collateral(
+        ctx: Context<fund_escrow_with_collateral::FundEscrowWithCollateral>,
+        escrow_id: String,
+        collateral_amount: u64,
+        six_bfi_price: i64,
+        price_timestamp: i64,
+        collateral_type: u8,
+        six_bfi_valor_bc: String,
+        ltv_bps: u16,
+        liquidation_threshold_bps: u16,
+    ) -> Result<()> {
+        fund_escrow_with_collateral::handler(
+            ctx,
+            escrow_id,
+            collateral_amount,
+            six_bfi_price,
+            price_timestamp,
+            collateral_type,
+            six_bfi_valor_bc,
+            ltv_bps,
+            liquidation_threshold_bps,
+        )
+    }
+
+    /// Submit updated collateral price and check LTV health (admin/oracle only)
+    pub fn check_collateral_health(
+        ctx: Context<check_collateral_health::CheckCollateralHealth>,
+        escrow_id: String,
+        current_price: i64,
+        price_timestamp: i64,
+        admin_institution_id: String,
+    ) -> Result<()> {
+        check_collateral_health::handler(
+            ctx,
+            escrow_id,
+            current_price,
+            price_timestamp,
+            admin_institution_id,
+        )
+    }
+
+    /// Liquidate collateral that has been flagged for liquidation (admin only)
+    pub fn liquidate_collateral(
+        ctx: Context<liquidate_collateral::LiquidateCollateral>,
+        escrow_id: String,
+    ) -> Result<()> {
+        liquidate_collateral::handler(ctx, escrow_id)
+    }
 }

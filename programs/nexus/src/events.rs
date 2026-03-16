@@ -120,3 +120,30 @@ pub struct AmlFlagRaised {
     pub risk_score: u8,
     pub timestamp: i64,
 }
+
+#[event]
+pub struct CollateralDeposited {
+    pub escrow_id: String,
+    pub collateral_type: u8,  // CollateralType as u8: 0=Stablecoin,1=Gold,2=Silver,3=Platinum,4=Rwa
+    pub collateral_amount: u64,
+    pub usd_value: i64,
+    pub ltv_bps: u16,
+    pub timestamp: i64,
+}
+
+#[event]
+pub struct CollateralHealthUpdated {
+    pub escrow_id: String,
+    pub current_ltv_bps: u16,
+    pub threshold_bps: u16,
+    pub is_healthy: bool,
+    pub timestamp: i64,
+}
+
+#[event]
+pub struct CollateralLiquidated {
+    pub escrow_id: String,
+    pub collateral_amount: u64,
+    pub usd_value_at_liquidation: i64,
+    pub timestamp: i64,
+}
