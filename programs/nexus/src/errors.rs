@@ -107,4 +107,10 @@ pub enum NexusError {
     CollateralAlreadyLiquidated,
     #[msg("Invalid collateral token mint")]
     InvalidCollateralMint,
+
+    // Lineage
+    #[msg("Invalid lineage chain: record does not link to expected previous")]
+    InvalidLineageChain,
+    #[msg("Lineage attestation is missing (all-zero bytes)")]
+    LineageAttestationMissing,
 }

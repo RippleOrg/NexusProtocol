@@ -7,6 +7,7 @@ pub mod state;
 pub mod utils;
 
 use instructions::*;
+use state::compliance::LineageEventType;
 use state::escrow::{ConditionProof, DisputeRuling, FxExecutionParams, TradeParams};
 use state::fx_venue::QuoteParams;
 
@@ -233,5 +234,43 @@ pub mod nexus {
         escrow_id: String,
     ) -> Result<()> {
         liquidate_collateral::handler(ctx, escrow_id)
+    }
+
+    /// Create a fund lineage record for source-of-funds audit chain (admin only)
+    pub fn create_lineage_record(
+        ctx: Context<create_lineage_record::CreateLineageRecord>,
+        record_id: String,
+        institution_id: String,
+        escrow_id: Option<String>,
+        event_type: LineageEventType,
+        amount: u64,
+        token_mint: Pubkey,
+        source_hash: [u8; 32],
+        transaction_signature: String,
+        attestation: [u8; 64],
+    ) -> Result<()> {
+        create_lineage_record::handler(
+            ctx,
+            record_id,
+            institution_id,
+            escrow_id,
+            event_type,
+            amount,
+            token_mint,
+            source_hash,
+            transaction_signature,
+            attestation,
+        )
+    }
+
+    /// Verify a fund lineage chain for regulatory inspection
+    /// Pass ordered chain records via remaining_accounts (oldest first)
+    pub fn verify_lineage_chain(
+        ctx: Context<verify_lineage_chain::VerifyLineageChain>,
+        institution_id: String,
+        start_record: Pubkey,
+        end_record: Pubkey,
+    ) -> Result<()> {
+        verify_lineage_chain::handler(ctx, institution_id, start_record, end_record)
     }
 }
