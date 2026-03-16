@@ -24,6 +24,7 @@ pub struct EscrowAccount {
     pub expires_at: i64,
     pub travel_rule_attached: bool,
     pub source_of_funds_hash: [u8; 32],
+    pub collateral: Option<CollateralConfig>,
     pub bump: u8,
 }
 
@@ -31,6 +32,7 @@ impl EscrowAccount {
     pub const MAX_ESCROW_ID_LEN: usize = 32;
     pub const MAX_INSTITUTION_ID_LEN: usize = 32;
     pub const MAX_CONDITIONS: usize = 10;
+    pub const MAX_SIX_BFI_VALOR_BC_LEN: usize = 16;
 
     pub const SPACE: usize = 8  // discriminator
         + 4 + Self::MAX_ESCROW_ID_LEN            // escrow_id
@@ -55,6 +57,7 @@ impl EscrowAccount {
         + 8                                       // expires_at
         + 1                                       // travel_rule_attached
         + 32                                      // source_of_funds_hash
+        + 1 + CollateralConfig::SPACE             // collateral Option<CollateralConfig>
         + 1;                                      // bump
 
     pub fn all_conditions_satisfied(&self) -> bool {
@@ -214,4 +217,41 @@ pub enum FxExecutionMode {
 pub enum DisputeRuling {
     ExporterWins,
     ImporterWins,
+}
+
+// ─── Precious Metals / Commodity Collateral ────────────────────────────────
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq)]
+pub enum CollateralType {
+    Stablecoin,       // Standard USDC collateral (existing path)
+    TokenizedGold,    // Tokenized gold (e.g. PAXG, TER)
+    TokenizedSilver,
+    TokenizedPlatinum,
+    CommodityRwa,     // Generic RWA token
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct CollateralConfig {
+    pub collateral_type: CollateralType,
+    pub collateral_mint: Pubkey,                         // Token mint of collateral asset
+    pub collateral_amount: u64,                          // Amount locked
+    pub six_bfi_valor_bc: String,                        // e.g. "274702_148" for Gold (max 16)
+    pub collateral_price_usd: i64,                       // Price at deposit time (scaled 1e8)
+    pub collateral_price_updated: i64,                   // Timestamp of price fetch
+    pub ltv_bps: u16,                                    // Loan-to-value ratio in basis points (e.g. 8000 = 80%)
+    pub liquidation_threshold_bps: u16,                  // e.g. 8500 = liquidate at 85% LTV
+    pub is_liquidated: bool,
+}
+
+impl CollateralConfig {
+    pub const SPACE: usize =
+        1                                              // collateral_type enum
+        + 32                                           // collateral_mint
+        + 8                                            // collateral_amount
+        + 4 + EscrowAccount::MAX_SIX_BFI_VALOR_BC_LEN // six_bfi_valor_bc
+        + 8                                            // collateral_price_usd
+        + 8                                            // collateral_price_updated
+        + 2                                            // ltv_bps
+        + 2                                            // liquidation_threshold_bps
+        + 1;                                           // is_liquidated
 }

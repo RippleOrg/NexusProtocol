@@ -95,4 +95,16 @@ pub enum NexusError {
     VenueNotActive,
     #[msg("Escrow is not in the correct status for this operation")]
     InvalidEscrowStatus,
+
+    // Collateral
+    #[msg("Collateral USD value is insufficient to cover required LTV")]
+    CollateralValueInsufficient,
+    #[msg("Current LTV exceeds liquidation threshold")]
+    CollateralLtvExceeded,
+    #[msg("Collateral price data is stale")]
+    CollateralPriceStale,
+    #[msg("Collateral has already been liquidated")]
+    CollateralAlreadyLiquidated,
+    #[msg("Invalid collateral token mint")]
+    InvalidCollateralMint,
 }
