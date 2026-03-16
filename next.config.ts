@@ -11,6 +11,8 @@ const nextConfig: NextConfig = {
     return config;
   },
   experimental: {
+    // Externalize packages with native bindings or CommonJS-only modules so they
+    // are not bundled by the Next.js server-component bundler.
     serverComponentsExternalPackages: ["@prisma/client", "pdfkit"],
   },
 };
