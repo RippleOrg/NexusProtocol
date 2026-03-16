@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import ComplianceEventFeed from "@/components/compliance/ComplianceEventFeed";
 
 export default function CompliancePage() {
   const [walletInput, setWalletInput] = useState("");
@@ -146,6 +147,9 @@ export default function CompliancePage() {
           ))}
         </div>
       </div>
+
+      {/* Real-time Compliance Event Feed (Solstream) */}
+      <ComplianceEventFeed />
     </div>
   );
 }
