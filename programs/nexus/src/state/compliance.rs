@@ -1,5 +1,60 @@
 use anchor_lang::prelude::*;
 
+// ─────────────────────────────────────
+// Fund Lineage — Source-of-Funds Chain
+// ─────────────────────────────────────
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq)]
+pub enum LineageEventType {
+    InitialDeposit,    // First deposit into NEXUS ecosystem
+    EscrowFunding,     // Locked into escrow
+    EscrowSettlement,  // Released via settlement
+    EscrowRefund,      // Returned to depositor
+    YieldAccrual,      // Yield credited (if applicable)
+    CollateralDeposit, // Commodity collateral locked
+    CollateralReturn,  // Collateral returned
+}
+
+#[account]
+pub struct FundLineageRecord {
+    pub record_id: String,              // UUID, max 36
+    pub institution_id: String,         // max 32
+    pub wallet: Pubkey,
+    pub escrow: Option<Pubkey>,
+    pub event_type: LineageEventType,
+    pub amount: u64,
+    pub token_mint: Pubkey,
+    pub source_hash: [u8; 32],          // SHA-256 of source-of-funds declaration
+    pub previous_record: Option<Pubkey>, // Linked list — prev lineage record
+    pub transaction_signature: String,  // max 88 (base58 tx sig)
+    pub block_time: i64,
+    pub attestation: [u8; 64],          // Ed25519 signature by protocol admin
+    pub bump: u8,
+}
+
+impl FundLineageRecord {
+    pub const MAX_RECORD_ID_LEN: usize = 36;
+    pub const MAX_INSTITUTION_ID_LEN: usize = 32;
+    pub const MAX_TX_SIG_LEN: usize = 88;
+
+    pub const SPACE: usize = 8
+        + 4 + Self::MAX_RECORD_ID_LEN       // record_id
+        + 4 + Self::MAX_INSTITUTION_ID_LEN  // institution_id
+        + 32                                // wallet
+        + 1 + 32                            // escrow: Option<Pubkey>
+        + 1                                 // event_type (enum tag)
+        + 8                                 // amount
+        + 32                                // token_mint
+        + 32                                // source_hash
+        + 1 + 32                            // previous_record: Option<Pubkey>
+        + 4 + Self::MAX_TX_SIG_LEN          // transaction_signature
+        + 8                                 // block_time
+        + 64                                // attestation
+        + 1;                                // bump
+}
+
+// ─────────────────────────────────────
+
 #[account]
 pub struct KycRegistry {
     pub registry_id: String,                  // max 32

@@ -1,5 +1,7 @@
 use anchor_lang::prelude::*;
 
+use crate::state::compliance::LineageEventType;
+
 #[event]
 pub struct EscrowCreated {
     pub escrow_id: String,
@@ -145,5 +147,26 @@ pub struct CollateralLiquidated {
     pub escrow_id: String,
     pub collateral_amount: u64,
     pub usd_value_at_liquidation: i64,
+    pub timestamp: i64,
+}
+
+#[event]
+pub struct LineageRecordCreated {
+    pub record_id: String,
+    pub institution_id: String,
+    pub wallet: Pubkey,
+    pub event_type: LineageEventType,
+    pub amount: u64,
+    pub previous_record: Option<Pubkey>,
+    pub timestamp: i64,
+}
+
+#[event]
+pub struct LineageChainVerified {
+    pub institution_id: String,
+    pub start_record: Pubkey,
+    pub end_record: Pubkey,
+    pub chain_length: u32,
+    pub total_value: u64,
     pub timestamp: i64,
 }
