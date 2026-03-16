@@ -1,0 +1,98 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Institution {
+  id              String   @id @default(cuid())
+  wallet          String   @unique
+  name            String
+  jurisdiction    String
+  kycTier         Int      @default(1)
+  kycVerifiedAt   DateTime @default(now())
+  kycExpiresAt    DateTime
+  isActive        Boolean  @default(true)
+  fireblocksVaultId String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  escrowsAsImporter Escrow[] @relation("Importer")
+  escrowsAsExporter Escrow[] @relation("Exporter")
+  amlScreenings     AmlScreening[]
+  kytEvents         KytEvent[]
+  travelRuleLogs    TravelRuleLog[] @relation("OriginatorInstitution")
+}
+
+model Escrow {
+  id                     String    @id @default(cuid())
+  onChainPda             String    @unique
+  importerInstitutionId  String
+  exporterInstitutionId  String
+  depositAmount          BigInt
+  tokenMint              String
+  settlementMint         String
+  status                 String    @default("Created")
+  conditionsTotal        Int       @default(0)
+  conditionsSatisfied    Int       @default(0)
+  fxRate                 Float?
+  settlementAmount       BigInt?
+  travelRuleLogPda       String?
+  sourceOfFundsHash      String?
+  createdAt              DateTime  @default(now())
+  settledAt              DateTime?
+  expiresAt              DateTime
+  updatedAt              DateTime  @updatedAt
+
+  importer Institution @relation("Importer", fields: [importerInstitutionId], references: [id])
+  exporter Institution @relation("Exporter", fields: [exporterInstitutionId], references: [id])
+}
+
+model TravelRuleLog {
+  id                      String   @id @default(cuid())
+  onChainLogPda           String   @unique
+  escrowId                String
+  originatorInstitutionId String
+  originatorName          String
+  originatorAccount       String
+  beneficiaryInstitutionId String
+  beneficiaryName         String
+  beneficiaryAccount      String
+  transferAmount          BigInt
+  currency                String
+  transactionHash         String?
+  createdAt               DateTime @default(now())
+
+  originatorInstitution Institution @relation("OriginatorInstitution", fields: [originatorInstitutionId], references: [id])
+}
+
+model AmlScreening {
+  id              String   @id @default(cuid())
+  wallet          String
+  institutionId   String
+  riskScore       Float
+  isSanctioned    Boolean  @default(false)
+  riskCategories  String[]
+  recommendation  String
+  provider        String   @default("CHAINALYSIS")
+  screenedAt      DateTime @default(now())
+
+  institution Institution @relation(fields: [institutionId], references: [id])
+}
+
+model KytEvent {
+  id              String    @id @default(cuid())
+  txHash          String
+  institutionId   String
+  riskLevel       String
+  flags           Json
+  score           Float
+  recommendation  String
+  resolvedAt      DateTime?
+  createdAt       DateTime  @default(now())
+
+  institution Institution @relation(fields: [institutionId], references: [id])
+}

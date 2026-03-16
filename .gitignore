@@ -1,0 +1,42 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build artifacts
+.next/
+out/
+dist/
+build/
+target/
+
+# Package lock files (keep yarn.lock)
+package-lock.json
+
+# TypeScript
+*.tsbuildinfo
+tsconfig.tsbuildinfo
+next-env.d.ts
+
+# Environment
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Prisma
+prisma/migrations/
+
+# Solana / Anchor
+.anchor/
+test-ledger/
+
+# Fireblocks secret key
+fireblocks_secret.key
+
+# Misc
+.DS_Store
+*.log
+*.pem
+.vercel
