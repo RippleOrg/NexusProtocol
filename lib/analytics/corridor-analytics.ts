@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import type { PrismaClient as PrismaClientType } from "@prisma/client";
 import { getStreamClient } from "@/lib/integrations/six-bfi-stream";
 import { sixBfiClient } from "@/lib/integrations/six-bfi";
 
@@ -416,9 +417,7 @@ export class CorridorAnalyticsEngine {
       const accountInfo = await connection.getAccountInfo(configPda);
       if (!accountInfo) return DEFAULT_NEXUS_FEE_BPS;
 
-      const feeBps = parseProtocolConfigFeeBps(
-        accountInfo.data as Buffer
-      );
+      const feeBps = parseProtocolConfigFeeBps(accountInfo.data as Buffer);
       return feeBps ?? DEFAULT_NEXUS_FEE_BPS;
     } catch {
       return DEFAULT_NEXUS_FEE_BPS;
@@ -426,93 +425,77 @@ export class CorridorAnalyticsEngine {
   }
 
   /**
-   * Fetch escrows from PostgreSQL when on-chain data is unavailable or as
-   * supplementary data for jurisdiction mapping.
+   * Fetch escrows from PostgreSQL when on-chain data is unavailable.
    *
    * The KYC verify route stores `Institution.name = institutionId` (the same
    * institution_id string used on-chain), so we can join on `name`.
    */
-  private async fetchDbEscrows(): Promise<ParsedEscrow[]> {
-    try {
-      const { PrismaClient } = await import("@prisma/client");
-      const prisma = new PrismaClient();
+  private async fetchDbEscrows(
+    prisma: PrismaClientType
+  ): Promise<ParsedEscrow[]> {
+    const since30d = new Date(Date.now() - 30 * MS_PER_DAY);
+    const escrows = await prisma.escrow.findMany({
+      where: { createdAt: { gte: since30d } },
+      select: {
+        depositAmount: true,
+        status: true,
+        createdAt: true,
+        settledAt: true,
+        travelRuleLogPda: true,
+        importer: { select: { name: true } },
+        exporter: { select: { name: true } },
+      },
+      // Generous limit for high-volume corridors; callers fetch for 30-day window only
+      take: 10_000,
+    });
 
-      const since30d = new Date(Date.now() - 30 * MS_PER_DAY);
-      const escrows = await prisma.escrow.findMany({
-        where: { createdAt: { gte: since30d } },
-        select: {
-          depositAmount: true,
-          status: true,
-          createdAt: true,
-          settledAt: true,
-          travelRuleLogPda: true,
-          importer: { select: { name: true } },
-          exporter: { select: { name: true } },
-        },
-        take: 5_000,
-      });
-
-      await prisma.$disconnect();
-
-      return escrows.map((e) => ({
-        importerInstitutionId: e.importer.name,
-        exporterInstitutionId: e.exporter.name,
-        depositAmountUsdc: Number(e.depositAmount) / USDC_DECIMALS,
-        status: escrowStatusStringToInt(e.status),
-        createdAtMs: e.createdAt.getTime(),
-        fundedAtMs: null, // not stored in the Prisma model
-        settledAtMs: e.settledAt ? e.settledAt.getTime() : null,
-        travelRuleAttached: !!e.travelRuleLogPda,
-      }));
-    } catch {
-      return [];
-    }
+    return escrows.map((e) => ({
+      importerInstitutionId: e.importer.name,
+      exporterInstitutionId: e.exporter.name,
+      depositAmountUsdc: Number(e.depositAmount) / USDC_DECIMALS,
+      status: escrowStatusStringToInt(e.status),
+      createdAtMs: e.createdAt.getTime(),
+      fundedAtMs: null, // not stored separately in the Prisma model
+      settledAtMs: e.settledAt ? e.settledAt.getTime() : null,
+      travelRuleAttached: !!e.travelRuleLogPda,
+    }));
   }
 
   /**
    * Build a map from institution name (= on-chain institution_id) to
    * jurisdiction code, sourced from PostgreSQL.
    */
-  private async buildInstitutionJurisdictionMap(): Promise<
-    Map<string, string>
-  > {
+  private async buildInstitutionJurisdictionMap(
+    prisma: PrismaClientType
+  ): Promise<Map<string, string>> {
     const map = new Map<string, string>();
-    try {
-      const { PrismaClient } = await import("@prisma/client");
-      const prisma = new PrismaClient();
-
-      const institutions = await prisma.institution.findMany({
-        select: { name: true, jurisdiction: true },
-      });
-      await prisma.$disconnect();
-
-      for (const inst of institutions) {
-        map.set(inst.name, inst.jurisdiction);
-      }
-    } catch {
-      // DB unavailable — corridor grouping will rely on empty map and return
-      // zero-volume metrics for all corridors.
+    const institutions = await prisma.institution.findMany({
+      select: { name: true, jurisdiction: true },
+    });
+    for (const inst of institutions) {
+      map.set(inst.name, inst.jurisdiction);
     }
     return map;
   }
 
   /**
-   * Fetch AML compliance metrics for a set of institution names from
-   * PostgreSQL.
+   * Compute AML compliance metrics for the given set of escrows using a
+   * shared Prisma client.
    */
   private async fetchComplianceMetrics(
-    escrows: ParsedEscrow[]
+    escrows: ParsedEscrow[],
+    prisma: PrismaClientType
   ): Promise<ComplianceMetrics> {
     const total = escrows.length;
     if (total === 0) {
       return { travelRuleRate: 0, avgAmlScore: 0, flaggedCount: 0 };
     }
 
-    // Travel Rule rate derived from on-chain / DB escrow data
+    // Travel Rule rate derived directly from on-chain / DB escrow flags
     const travelRuleCount = escrows.filter((e) => e.travelRuleAttached).length;
-    const travelRuleRate = total > 0 ? (travelRuleCount / total) * 100 : 0;
+    const travelRuleRate = (travelRuleCount / total) * 100;
 
-    // AML metrics from Prisma
+    // AML metrics — aggregate over all institutions involved in this corridor
     let avgAmlScore = 0;
     let flaggedCount = 0;
 
@@ -524,10 +507,6 @@ export class CorridorAnalyticsEngine {
     ];
 
     try {
-      const { PrismaClient } = await import("@prisma/client");
-      const prisma = new PrismaClient();
-
-      // Look up institution IDs for the given names
       const institutions = await prisma.institution.findMany({
         where: { name: { in: institutionNames } },
         select: { id: true },
@@ -535,30 +514,47 @@ export class CorridorAnalyticsEngine {
       const institutionIds = institutions.map((i) => i.id);
 
       if (institutionIds.length > 0) {
-        const screenings = await prisma.amlScreening.findMany({
-          where: { institutionId: { in: institutionIds } },
-          select: { riskScore: true, recommendation: true },
-          take: 1_000,
-        });
+        // Aggregate directly in the DB to avoid loading large result sets
+        const [scoreAgg, blockedCount] = await Promise.all([
+          prisma.amlScreening.aggregate({
+            where: { institutionId: { in: institutionIds } },
+            _avg: { riskScore: true },
+          }),
+          prisma.amlScreening.count({
+            where: {
+              institutionId: { in: institutionIds },
+              recommendation: "BLOCK",
+            },
+          }),
+        ]);
 
-        if (screenings.length > 0) {
-          const totalScore = screenings.reduce(
-            (sum, s) => sum + s.riskScore,
-            0
-          );
-          avgAmlScore = totalScore / screenings.length;
-          flaggedCount = screenings.filter(
-            (s) => s.recommendation === "BLOCK"
-          ).length;
-        }
+        avgAmlScore = scoreAgg._avg.riskScore ?? 0;
+        flaggedCount = blockedCount;
       }
-
-      await prisma.$disconnect();
     } catch {
-      // DB unavailable — return zero compliance metrics
+      // DB unavailable — return zero AML metrics
     }
 
     return { travelRuleRate, avgAmlScore, flaggedCount };
+  }
+
+  /**
+   * Create a Prisma client, run `fn`, and guarantee disconnection.
+   * Returns null when the DB is unavailable.
+   */
+  private async withPrisma<T>(
+    fn: (prisma: PrismaClientType) => Promise<T>
+  ): Promise<T | null> {
+    let prisma: PrismaClientType | null = null;
+    try {
+      const { PrismaClient } = await import("@prisma/client");
+      prisma = new PrismaClient() as PrismaClientType;
+      return await fn(prisma);
+    } catch {
+      return null;
+    } finally {
+      await prisma?.$disconnect();
+    }
   }
 
   /**
@@ -575,20 +571,29 @@ export class CorridorAnalyticsEngine {
       throw new Error(`Unknown corridor: ${from} → ${to}`);
     }
 
-    // Fetch all inputs in parallel
-    const [onChainEscrows, jurisdictionMap, feeBps, rateData] =
-      await Promise.all([
-        this.fetchOnChainEscrows(),
-        this.buildInstitutionJurisdictionMap(),
-        this.fetchProtocolFeeBps(),
-        this.getLiveRate(corridorDef.valorBc, corridorDef.pair),
-      ]);
+    // Fetch on-chain data and the live rate in parallel; open a single DB
+    // connection for all PostgreSQL work in this request cycle.
+    const [onChainEscrows, feeBps, rateData, dbResult] = await Promise.all([
+      this.fetchOnChainEscrows(),
+      this.fetchProtocolFeeBps(),
+      this.getLiveRate(corridorDef.valorBc, corridorDef.pair),
+      this.withPrisma(async (prisma) => {
+        const [jurisdictionMap, dbEscrowsFallback] = await Promise.all([
+          this.buildInstitutionJurisdictionMap(prisma),
+          // Pre-fetch DB escrows in case on-chain fetch failed
+          this.fetchDbEscrows(prisma),
+        ]);
+        return { jurisdictionMap, dbEscrowsFallback };
+      }),
+    ]);
 
-    // Fall back to DB escrows if on-chain fetch failed
+    const jurisdictionMap =
+      dbResult?.jurisdictionMap ?? new Map<string, string>();
     const allEscrows =
-      onChainEscrows !== null ? onChainEscrows : await this.fetchDbEscrows();
+      onChainEscrows !== null
+        ? onChainEscrows
+        : (dbResult?.dbEscrowsFallback ?? []);
 
-    // Filter escrows that belong to this corridor
     const corridorEscrows = filterEscrowsByJurisdiction(
       allEscrows,
       from,
@@ -596,31 +601,40 @@ export class CorridorAnalyticsEngine {
       jurisdictionMap
     );
 
-    return buildMetrics(
-      corridorDef,
-      corridorEscrows,
-      rateData,
-      feeBps,
-      await this.fetchComplianceMetrics(corridorEscrows)
-    );
+    const compliance =
+      (await this.withPrisma((prisma) =>
+        this.fetchComplianceMetrics(corridorEscrows, prisma)
+      )) ?? { travelRuleRate: 0, avgAmlScore: 0, flaggedCount: 0 };
+
+    return buildMetrics(corridorDef, corridorEscrows, rateData, feeBps, compliance);
   }
 
   /**
    * Compute CorridorMetrics for every NEXUS priority corridor in one batch.
-   * On-chain data and jurisdiction map are fetched once and reused.
+   * On-chain data and DB queries share a single connection for efficiency.
    */
   async getAllCorridorMetrics(): Promise<CorridorMetrics[]> {
-    // Fetch shared data in parallel
-    const [onChainEscrows, jurisdictionMap, feeBps] = await Promise.all([
+    // Fetch on-chain data and the protocol fee in parallel with DB work
+    const [onChainEscrows, feeBps, dbResult] = await Promise.all([
       this.fetchOnChainEscrows(),
-      this.buildInstitutionJurisdictionMap(),
       this.fetchProtocolFeeBps(),
+      this.withPrisma(async (prisma) => {
+        const [jurisdictionMap, dbEscrowsFallback] = await Promise.all([
+          this.buildInstitutionJurisdictionMap(prisma),
+          this.fetchDbEscrows(prisma),
+        ]);
+        return { jurisdictionMap, dbEscrowsFallback, prisma };
+      }),
     ]);
 
+    const jurisdictionMap =
+      dbResult?.jurisdictionMap ?? new Map<string, string>();
     const allEscrows =
-      onChainEscrows !== null ? onChainEscrows : await this.fetchDbEscrows();
+      onChainEscrows !== null
+        ? onChainEscrows
+        : (dbResult?.dbEscrowsFallback ?? []);
 
-    // Fetch rates for every unique valorBc in parallel
+    // Fetch live rates for every unique valorBc in parallel
     const uniqueValorBcs = [
       ...new Set(NEXUS_CORRIDORS.map((c) => c.valorBc)),
     ];
@@ -633,7 +647,9 @@ export class CorridorAnalyticsEngine {
     );
     const rateMap = new Map(rateResults);
 
-    // Build metrics for each corridor
+    // Compute per-corridor escrow groups and compliance metrics.
+    // A single Prisma connection (already open from `dbResult`) is reused
+    // across all corridors; if DB was unavailable we fall back to zero metrics.
     return Promise.all(
       NEXUS_CORRIDORS.map(async (corridorDef) => {
         const corridorEscrows = filterEscrowsByJurisdiction(
@@ -646,8 +662,30 @@ export class CorridorAnalyticsEngine {
           rate: 0,
           change24h: 0,
         };
-        const compliance = await this.fetchComplianceMetrics(corridorEscrows);
-        return buildMetrics(corridorDef, corridorEscrows, rateData, feeBps, compliance);
+
+        let compliance: ComplianceMetrics = {
+          travelRuleRate: 0,
+          avgAmlScore: 0,
+          flaggedCount: 0,
+        };
+        if (dbResult?.prisma) {
+          try {
+            compliance = await this.fetchComplianceMetrics(
+              corridorEscrows,
+              dbResult.prisma
+            );
+          } catch {
+            // fall through to zero metrics
+          }
+        }
+
+        return buildMetrics(
+          corridorDef,
+          corridorEscrows,
+          rateData,
+          feeBps,
+          compliance
+        );
       })
     );
   }
@@ -709,19 +747,20 @@ function buildMetrics(
   const volume24h = escrows24h.reduce((s, e) => s + e.depositAmountUsdc, 0);
   const tradeCount30d = escrows30d.length;
 
-  // Average settlement time (funded → settled) in milliseconds
-  const settledEscrows = escrows30d.filter(
-    (e) =>
+  // Average settlement time (funded → settled) in milliseconds.
+  // Filter to escrows where both timestamps are available.
+  const settledWithTimes = escrows30d.filter(
+    (e): e is ParsedEscrow & { settledAtMs: number; fundedAtMs: number } =>
       e.status === ESCROW_STATUS_SETTLED &&
       e.settledAtMs !== null &&
       e.fundedAtMs !== null
   );
   const avgSettlementMs =
-    settledEscrows.length > 0
-      ? settledEscrows.reduce(
-          (sum, e) => sum + (e.settledAtMs! - e.fundedAtMs!),
+    settledWithTimes.length > 0
+      ? settledWithTimes.reduce(
+          (sum, e) => sum + (e.settledAtMs - e.fundedAtMs),
           0
-        ) / settledEscrows.length
+        ) / settledWithTimes.length
       : 0;
 
   // Cost comparison (based on 24-hour volume)
