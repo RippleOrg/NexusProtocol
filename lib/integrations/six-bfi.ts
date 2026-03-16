@@ -1,3 +1,5 @@
+import https from "https";
+import fs from "fs";
 import axios, { AxiosInstance } from "axios";
 
 export interface FxRate {
@@ -17,9 +19,39 @@ export interface MetalPrice {
   source: "SIX_BFI";
 }
 
+// VALOR_BC identifiers for NEXUS FX pairs and precious metals (BC=148)
+const NEXUS_FX_PAIRS: Record<string, string> = {
+  "USD/NGN": "199113_148",
+  "GBP/NGN": "282981_148",
+  "USD/KES": "275141_148",
+  "GBP/KES": "199615_148",
+  "USD/GHS": "3206444_148",
+  "EUR/USD": "946681_148",
+  "GBP/USD": "275017_148",
+  "CHF/USD": "275164_148",
+  "XAU/USD": "274702_148",
+  "XAG/USD": "274720_148",
+  "XPT/USD": "287635_148",
+};
+
+const SIX_BASE_URL = "https://api.six-group.com/web/v2";
 const REDIS_TTL_SECONDS = 30;
 const RETRY_ATTEMPTS = 3;
 const RETRY_DELAY_MS = 500;
+
+interface IntradaySnapshotEntry {
+  intradaySnapshot?: {
+    lastPrice?: number;
+    bid?: number;
+    ask?: number;
+    responseDateTime?: string;
+    currency?: string;
+  };
+}
+
+interface IntradaySnapshotResponse {
+  data?: IntradaySnapshotEntry[];
+}
 
 async function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -45,25 +77,37 @@ function setCache<T>(key: string, value: T, ttlSeconds: number): void {
   });
 }
 
+// Build MTLS agent from cert/key env vars. Returns undefined when vars are absent
+// (e.g. local dev / CI without certs). Agent is cached after first build.
+let _httpsAgent: https.Agent | undefined | null = null;
+
+function buildHttpsAgent(): https.Agent | undefined {
+  if (_httpsAgent !== null) return _httpsAgent;
+  const certPath = process.env.SIX_CERT_PATH;
+  const keyPath = process.env.SIX_KEY_PATH;
+  if (!certPath || !keyPath) {
+    _httpsAgent = undefined;
+    return undefined;
+  }
+  _httpsAgent = new https.Agent({
+    cert: fs.readFileSync(certPath),
+    key: fs.readFileSync(keyPath),
+    passphrase: process.env.SIX_CERT_PASSWORD,
+  });
+  return _httpsAgent;
+}
+
 export class SixBfiClient {
   private client: AxiosInstance;
-  private baseUrl: string;
-  private apiKey: string;
 
-  constructor(apiKey?: string, baseUrl?: string) {
-    this.apiKey = apiKey ?? process.env.SIX_BFI_API_KEY ?? "";
-    this.baseUrl =
-      baseUrl ??
-      process.env.SIX_BFI_BASE_URL ??
-      "https://api.six-group.com/api/findata/v1";
+  constructor() {
     this.client = axios.create({
-      baseURL: this.baseUrl,
+      baseURL: SIX_BASE_URL,
       timeout: 10_000,
       headers: {
-        Authorization: `Bearer ${this.apiKey}`,
-        "Content-Type": "application/json",
         Accept: "application/json",
       },
+      httpsAgent: buildHttpsAgent(),
     });
   }
 
@@ -82,30 +126,54 @@ export class SixBfiClient {
     throw lastError;
   }
 
+  private async fetchIntradaySnapshot(
+    valorBc: string
+  ): Promise<IntradaySnapshotEntry> {
+    const response = await this.client.get<IntradaySnapshotResponse>(
+      `/listings/marketData/intradaySnapshot`,
+      { params: { scheme: "VALOR_BC", ids: valorBc } }
+    );
+    const entries = response.data?.data;
+    if (!entries || entries.length === 0) {
+      throw new Error(
+        `No intradaySnapshot data returned for VALOR_BC ${valorBc}`
+      );
+    }
+    return entries[0];
+  }
+
   async getFxRate(base: string, quote: string): Promise<FxRate> {
+    const pairKey = `${base}/${quote}`;
+    const valorBc = NEXUS_FX_PAIRS[pairKey];
+    if (!valorBc) {
+      throw new Error(`Unsupported FX pair: ${pairKey}`);
+    }
+
     const pair = `${base}${quote}`;
     const cacheKey = `six_bfi_rate_${pair}`;
     const cached = getCached<FxRate>(cacheKey);
     if (cached) return cached;
 
     const rate = await this.retryRequest(async () => {
-      const response = await this.client.get<{
-        data: {
-          rate: number;
-          bid: number;
-          ask: number;
-          timestamp: string;
-          change24h: number;
-        };
-      }>(`/fx-rates/${pair}`);
-      const rateData = response.data.data;
+      const entry = await this.fetchIntradaySnapshot(valorBc);
+      const snap = entry.intradaySnapshot;
+      if (!snap) {
+        throw new Error(`Missing intradaySnapshot in response for ${pairKey}`);
+      }
+      if (snap.lastPrice == null || snap.bid == null || snap.ask == null) {
+        throw new Error(
+          `Incomplete price data in intradaySnapshot for ${pairKey}: lastPrice=${snap.lastPrice}, bid=${snap.bid}, ask=${snap.ask}`
+        );
+      }
       const fxRate: FxRate = {
         pair,
-        rate: rateData.rate,
-        bid: rateData.bid,
-        ask: rateData.ask,
-        timestamp: new Date(rateData.timestamp).getTime(),
-        change24h: rateData.change24h ?? 0,
+        rate: snap.lastPrice,
+        bid: snap.bid,
+        ask: snap.ask,
+        timestamp: snap.responseDateTime
+          ? new Date(snap.responseDateTime).getTime()
+          : Date.now(),
+        change24h: 0,
         source: "SIX_BFI",
       };
       return fxRate;
@@ -125,19 +193,33 @@ export class SixBfiClient {
   }
 
   async getMetalPrice(metal: "XAU" | "XAG" | "XPT"): Promise<MetalPrice> {
+    const pairKey = `${metal}/USD`;
+    const valorBc = NEXUS_FX_PAIRS[pairKey];
+    if (!valorBc) {
+      throw new Error(`Unsupported metal: ${metal}`);
+    }
+
     const cacheKey = `six_bfi_metal_${metal}`;
     const cached = getCached<MetalPrice>(cacheKey);
     if (cached) return cached;
 
     const price = await this.retryRequest(async () => {
-      const response = await this.client.get<{
-        data: { price: number; timestamp: string };
-      }>(`/metals/${metal}/USD`);
-      const metalData = response.data.data;
+      const entry = await this.fetchIntradaySnapshot(valorBc);
+      const snap = entry.intradaySnapshot;
+      if (!snap) {
+        throw new Error(`Missing intradaySnapshot in response for ${pairKey}`);
+      }
+      if (snap.lastPrice == null) {
+        throw new Error(
+          `lastPrice missing in intradaySnapshot for ${pairKey}`
+        );
+      }
       const metalPrice: MetalPrice = {
         metal,
-        priceUsd: metalData.price,
-        timestamp: new Date(metalData.timestamp).getTime(),
+        priceUsd: snap.lastPrice,
+        timestamp: snap.responseDateTime
+          ? new Date(snap.responseDateTime).getTime()
+          : Date.now(),
         source: "SIX_BFI",
       };
       return metalPrice;
