@@ -17,8 +17,10 @@ pub enum LineageEventType {
 
 #[account]
 pub struct FundLineageRecord {
-    pub record_id: String,              // UUID, max 36
-    pub institution_id: String,         // max 32
+    /// UUID — validated to MAX_RECORD_ID_LEN in create_lineage_record handler
+    pub record_id: String,
+    /// Validated to MAX_INSTITUTION_ID_LEN in create_lineage_record handler
+    pub institution_id: String,
     pub wallet: Pubkey,
     pub escrow: Option<Pubkey>,
     pub event_type: LineageEventType,
@@ -26,7 +28,8 @@ pub struct FundLineageRecord {
     pub token_mint: Pubkey,
     pub source_hash: [u8; 32],          // SHA-256 of source-of-funds declaration
     pub previous_record: Option<Pubkey>, // Linked list — prev lineage record
-    pub transaction_signature: String,  // max 88 (base58 tx sig)
+    /// Validated to MAX_TX_SIG_LEN in create_lineage_record handler
+    pub transaction_signature: String,
     pub block_time: i64,
     pub attestation: [u8; 64],          // Ed25519 signature by protocol admin
     pub bump: u8,

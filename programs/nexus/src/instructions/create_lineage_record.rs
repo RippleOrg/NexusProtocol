@@ -52,6 +52,20 @@ pub fn handler(
     require!(!ctx.accounts.config.is_paused, NexusError::ProtocolPaused);
     require!(amount > 0, NexusError::InvalidAmount);
 
+    // Validate string field lengths against FundLineageRecord::SPACE constants
+    require!(
+        record_id.len() <= FundLineageRecord::MAX_RECORD_ID_LEN,
+        NexusError::InvalidAmount
+    );
+    require!(
+        institution_id.len() <= FundLineageRecord::MAX_INSTITUTION_ID_LEN,
+        NexusError::InvalidAmount
+    );
+    require!(
+        transaction_signature.len() <= FundLineageRecord::MAX_TX_SIG_LEN,
+        NexusError::InvalidAmount
+    );
+
     // Attestation must be non-zero (admin must have signed off-chain)
     require!(
         attestation.iter().any(|&b| b != 0),
