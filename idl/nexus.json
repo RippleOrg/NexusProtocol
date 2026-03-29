@@ -1,0 +1,4869 @@
+{
+  "address": "3GapkzNSKXUgtjLXh4wSuWQBA13EwQSzTRNiDwcpFBp7",
+  "metadata": {
+    "name": "nexus",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "NEXUS Protocol - Compliance-native programmable trade settlement and institutional FX venue on Solana"
+  },
+  "instructions": [
+    {
+      "name": "add_fx_liquidity",
+      "docs": [
+        "Add liquidity to an FX venue pool"
+      ],
+      "discriminator": [
+        163,
+        209,
+        133,
+        161,
+        187,
+        116,
+        96,
+        254
+      ],
+      "accounts": [
+        {
+          "name": "fx_venue",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  102,
+                  120,
+                  45,
+                  118,
+                  101,
+                  110,
+                  117,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "base_mint"
+              },
+              {
+                "kind": "account",
+                "path": "quote_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "lp_position",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  108,
+                  112,
+                  45,
+                  112,
+                  111,
+                  115,
+                  105,
+                  116,
+                  105,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "fx_venue"
+              },
+              {
+                "kind": "account",
+                "path": "provider"
+              }
+            ]
+          }
+        },
+        {
+          "name": "fx_vault_base",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  102,
+                  120,
+                  45,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  45,
+                  98,
+                  97,
+                  115,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "fx_venue"
+              }
+            ]
+          }
+        },
+        {
+          "name": "fx_vault_quote",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  102,
+                  120,
+                  45,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  45,
+                  113,
+                  117,
+                  111,
+                  116,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "fx_venue"
+              }
+            ]
+          }
+        },
+        {
+          "name": "provider_base_account",
+          "writable": true
+        },
+        {
+          "name": "provider_quote_account",
+          "writable": true
+        },
+        {
+          "name": "base_mint"
+        },
+        {
+          "name": "quote_mint"
+        },
+        {
+          "name": "provider_kyc",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  107,
+                  121,
+                  99,
+                  45,
+                  114,
+                  101,
+                  99,
+                  111,
+                  114,
+                  100
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "provider_institution_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "provider",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "token_program"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount_a",
+          "type": "u64"
+        },
+        {
+          "name": "amount_b",
+          "type": "u64"
+        },
+        {
+          "name": "provider_institution_id",
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "name": "cancel_fx_quote",
+      "docs": [
+        "Cancel an unfilled RFQ quote"
+      ],
+      "discriminator": [
+        251,
+        38,
+        58,
+        211,
+        50,
+        246,
+        181,
+        225
+      ],
+      "accounts": [
+        {
+          "name": "rfq_quote",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  102,
+                  113,
+                  45,
+                  113,
+                  117,
+                  111,
+                  116,
+                  101
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "quote_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "market_maker",
+          "writable": true,
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "quote_id",
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "name": "check_collateral_health",
+      "docs": [
+        "Submit updated collateral price and check LTV health (admin/oracle only)"
+      ],
+      "discriminator": [
+        174,
+        138,
+        175,
+        192,
+        62,
+        78,
+        69,
+        36
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  116,
+                  111,
+                  99,
+                  111,
+                  108,
+                  45,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "escrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "escrow_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "admin_or_oracle",
+          "docs": [
+            "The admin or oracle submitting the updated price. Must be the protocol admin."
+          ],
+          "signer": true
+        },
+        {
+          "name": "admin_kyc",
+          "docs": [
+            "KYC record of the admin (to satisfy compliance check structure)"
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  107,
+                  121,
+                  99,
+                  45,
+                  114,
+                  101,
+                  99,
+                  111,
+                  114,
+                  100
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "admin_institution_id"
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "escrow_id",
+          "type": "string"
+        },
+        {
+          "name": "current_price",
+          "type": "i64"
+        },
+        {
+          "name": "price_timestamp",
+          "type": "i64"
+        },
+        {
+          "name": "admin_institution_id",
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "name": "create_escrow",
+      "docs": [
+        "Create a new escrow with trade conditions and compliance checks"
+      ],
+      "discriminator": [
+        253,
+        215,
+        165,
+        116,
+        36,
+        108,
+        68,
+        80
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  116,
+                  111,
+                  99,
+                  111,
+                  108,
+                  45,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "escrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "escrow_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault_token_account",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "escrow_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_mint"
+        },
+        {
+          "name": "importer_kyc",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  107,
+                  121,
+                  99,
+                  45,
+                  114,
+                  101,
+                  99,
+                  111,
+                  114,
+                  100
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "importer_institution_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "exporter_kyc",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  107,
+                  121,
+                  99,
+                  45,
+                  114,
+                  101,
+                  99,
+                  111,
+                  114,
+                  100
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "params.exporter_institution_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "importer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "token_program"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "rent",
+          "address": "SysvarRent111111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "escrow_id",
+          "type": "string"
+        },
+        {
+          "name": "deposit_amount",
+          "type": "u64"
+        },
+        {
+          "name": "params",
+          "type": {
+            "defined": {
+              "name": "TradeParams"
+            }
+          }
+        },
+        {
+          "name": "importer_institution_id",
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "name": "create_lineage_record",
+      "docs": [
+        "Create a fund lineage record for source-of-funds audit chain (admin only)"
+      ],
+      "discriminator": [
+        142,
+        66,
+        241,
+        203,
+        123,
+        114,
+        219,
+        35
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  116,
+                  111,
+                  99,
+                  111,
+                  108,
+                  45,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "lineage_record",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  108,
+                  105,
+                  110,
+                  101,
+                  97,
+                  103,
+                  101
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "record_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "previous_lineage_record",
+          "docs": [
+            "Optional: previous lineage record for this institution (chain linkage).",
+            "Pass the system program as a placeholder when there is no previous record.",
+            "verified by the seeds constraint on the caller side."
+          ],
+          "optional": true
+        },
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "record_id",
+          "type": "string"
+        },
+        {
+          "name": "institution_id",
+          "type": "string"
+        },
+        {
+          "name": "escrow_id",
+          "type": {
+            "option": "string"
+          }
+        },
+        {
+          "name": "event_type",
+          "type": {
+            "defined": {
+              "name": "LineageEventType"
+            }
+          }
+        },
+        {
+          "name": "amount",
+          "type": "u64"
+        },
+        {
+          "name": "token_mint",
+          "type": "pubkey"
+        },
+        {
+          "name": "source_hash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "transaction_signature",
+          "type": "string"
+        },
+        {
+          "name": "attestation",
+          "type": {
+            "array": [
+              "u8",
+              64
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "dispute_escrow",
+      "docs": [
+        "Raise a dispute for an escrow (importer only, within dispute window)"
+      ],
+      "discriminator": [
+        198,
+        174,
+        139,
+        70,
+        87,
+        79,
+        181,
+        139
+      ],
+      "accounts": [
+        {
+          "name": "escrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "escrow_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "importer",
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "escrow_id",
+          "type": "string"
+        },
+        {
+          "name": "reason",
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "name": "execute_settlement",
+      "docs": [
+        "Atomically execute FX settlement: escrow release + FX swap in single transaction"
+      ],
+      "discriminator": [
+        237,
+        120,
+        82,
+        62,
+        224,
+        193,
+        147,
+        137
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  116,
+                  111,
+                  99,
+                  111,
+                  108,
+                  45,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "escrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "escrow_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault_token_account",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "escrow_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "fx_venue",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  102,
+                  120,
+                  45,
+                  118,
+                  101,
+                  110,
+                  117,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "escrow.token_mint",
+                "account": "EscrowAccount"
+              },
+              {
+                "kind": "account",
+                "path": "escrow.settlement_currency_mint",
+                "account": "EscrowAccount"
+              }
+            ]
+          }
+        },
+        {
+          "name": "fx_vault_base",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  102,
+                  120,
+                  45,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  45,
+                  98,
+                  97,
+                  115,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "fx_venue"
+              }
+            ]
+          }
+        },
+        {
+          "name": "fx_vault_quote",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  102,
+                  120,
+                  45,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  45,
+                  113,
+                  117,
+                  111,
+                  116,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "fx_venue"
+              }
+            ]
+          }
+        },
+        {
+          "name": "exporter_settlement_account",
+          "writable": true
+        },
+        {
+          "name": "treasury_account",
+          "writable": true
+        },
+        {
+          "name": "token_mint"
+        },
+        {
+          "name": "settlement_mint"
+        },
+        {
+          "name": "importer_kyc",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  107,
+                  121,
+                  99,
+                  45,
+                  114,
+                  101,
+                  99,
+                  111,
+                  114,
+                  100
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "escrow.importer_institution_id",
+                "account": "EscrowAccount"
+              }
+            ]
+          }
+        },
+        {
+          "name": "exporter_kyc",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  107,
+                  121,
+                  99,
+                  45,
+                  114,
+                  101,
+                  99,
+                  111,
+                  114,
+                  100
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "escrow.exporter_institution_id",
+                "account": "EscrowAccount"
+              }
+            ]
+          }
+        },
+        {
+          "name": "travel_rule_log",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  97,
+                  118,
+                  101,
+                  108,
+                  45,
+                  114,
+                  117,
+                  108,
+                  101,
+                  45,
+                  108,
+                  111,
+                  103
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "log_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "settler",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "token_program"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "escrow_id",
+          "type": "string"
+        },
+        {
+          "name": "log_id",
+          "type": "string"
+        },
+        {
+          "name": "fx_params",
+          "type": {
+            "defined": {
+              "name": "FxExecutionParams"
+            }
+          }
+        },
+        {
+          "name": "originator_name",
+          "type": "string"
+        },
+        {
+          "name": "originator_account",
+          "type": "string"
+        },
+        {
+          "name": "beneficiary_name",
+          "type": "string"
+        },
+        {
+          "name": "beneficiary_account",
+          "type": "string"
+        },
+        {
+          "name": "transaction_reference",
+          "type": "string"
+        },
+        {
+          "name": "settlement_start_ms",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "fund_escrow",
+      "docs": [
+        "Fund an escrow by transferring tokens to the PDA vault"
+      ],
+      "discriminator": [
+        155,
+        18,
+        218,
+        141,
+        182,
+        213,
+        69,
+        201
+      ],
+      "accounts": [
+        {
+          "name": "escrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "escrow_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "importer_token_account",
+          "writable": true
+        },
+        {
+          "name": "vault_token_account",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "escrow_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_mint"
+        },
+        {
+          "name": "importer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "token_program"
+        }
+      ],
+      "args": [
+        {
+          "name": "escrow_id",
+          "type": "string"
+        },
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "fund_escrow_with_collateral",
+      "docs": [
+        "Fund an escrow using tokenized commodity collateral (precious metals / RWA)"
+      ],
+      "discriminator": [
+        225,
+        180,
+        190,
+        172,
+        102,
+        51,
+        240,
+        81
+      ],
+      "accounts": [
+        {
+          "name": "escrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "escrow_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "importer_collateral_account",
+          "docs": [
+            "Collateral token account owned by the importer"
+          ],
+          "writable": true
+        },
+        {
+          "name": "collateral_vault",
+          "docs": [
+            "PDA vault that holds the collateral tokens"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  108,
+                  108,
+                  97,
+                  116,
+                  101,
+                  114,
+                  97,
+                  108,
+                  45,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "escrow_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "collateral_mint"
+        },
+        {
+          "name": "importer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "token_program"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "rent",
+          "address": "SysvarRent111111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "escrow_id",
+          "type": "string"
+        },
+        {
+          "name": "collateral_amount",
+          "type": "u64"
+        },
+        {
+          "name": "six_bfi_price",
+          "type": "i64"
+        },
+        {
+          "name": "price_timestamp",
+          "type": "i64"
+        },
+        {
+          "name": "collateral_type",
+          "type": "u8"
+        },
+        {
+          "name": "six_bfi_valor_bc",
+          "type": "string"
+        },
+        {
+          "name": "ltv_bps",
+          "type": "u16"
+        },
+        {
+          "name": "liquidation_threshold_bps",
+          "type": "u16"
+        }
+      ]
+    },
+    {
+      "name": "initialize_fx_venue",
+      "docs": [
+        "Initialize an FX venue and seed its base/quote liquidity vaults."
+      ],
+      "discriminator": [
+        231,
+        128,
+        179,
+        93,
+        251,
+        129,
+        210,
+        191
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  116,
+                  111,
+                  99,
+                  111,
+                  108,
+                  45,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "fx_venue",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  102,
+                  120,
+                  45,
+                  118,
+                  101,
+                  110,
+                  117,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "base_mint"
+              },
+              {
+                "kind": "account",
+                "path": "quote_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "fx_vault_base",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  102,
+                  120,
+                  45,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  45,
+                  98,
+                  97,
+                  115,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "fx_venue"
+              }
+            ]
+          }
+        },
+        {
+          "name": "fx_vault_quote",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  102,
+                  120,
+                  45,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  45,
+                  113,
+                  117,
+                  111,
+                  116,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "fx_venue"
+              }
+            ]
+          }
+        },
+        {
+          "name": "admin_base_account",
+          "writable": true
+        },
+        {
+          "name": "admin_quote_account",
+          "writable": true
+        },
+        {
+          "name": "base_mint"
+        },
+        {
+          "name": "quote_mint"
+        },
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "token_program"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "venue_id",
+          "type": "string"
+        },
+        {
+          "name": "fee_bps",
+          "type": "u16"
+        },
+        {
+          "name": "six_bfi_rate",
+          "type": "i64"
+        },
+        {
+          "name": "max_rate_deviation_bps",
+          "type": "u16"
+        },
+        {
+          "name": "initial_base_liquidity",
+          "type": "u64"
+        },
+        {
+          "name": "initial_quote_liquidity",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "initialize_protocol",
+      "docs": [
+        "Initialize the NEXUS protocol with admin, fee configuration, and KYC registry"
+      ],
+      "discriminator": [
+        188,
+        233,
+        252,
+        106,
+        134,
+        146,
+        202,
+        91
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  116,
+                  111,
+                  99,
+                  111,
+                  108,
+                  45,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "kyc_registry",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  107,
+                  121,
+                  99,
+                  45,
+                  114,
+                  101,
+                  103,
+                  105,
+                  115,
+                  116,
+                  114,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "fee_bps",
+          "type": "u16"
+        },
+        {
+          "name": "admin",
+          "type": "pubkey"
+        },
+        {
+          "name": "treasury",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "liquidate_collateral",
+      "docs": [
+        "Liquidate collateral that has been flagged for liquidation (admin only)"
+      ],
+      "discriminator": [
+        160,
+        199,
+        78,
+        141,
+        140,
+        146,
+        166,
+        212
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  116,
+                  111,
+                  99,
+                  111,
+                  108,
+                  45,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "escrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "escrow_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "collateral_vault",
+          "docs": [
+            "PDA vault holding the collateral tokens"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  108,
+                  108,
+                  97,
+                  116,
+                  101,
+                  114,
+                  97,
+                  108,
+                  45,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "escrow_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "treasury_token_account",
+          "docs": [
+            "Protocol treasury token account to receive liquidated collateral"
+          ],
+          "writable": true
+        },
+        {
+          "name": "importer_refund_account",
+          "docs": [
+            "Importer token account to receive proportional refund"
+          ],
+          "writable": true
+        },
+        {
+          "name": "collateral_mint"
+        },
+        {
+          "name": "admin",
+          "docs": [
+            "Admin must authorize liquidation"
+          ],
+          "signer": true
+        },
+        {
+          "name": "token_program"
+        }
+      ],
+      "args": [
+        {
+          "name": "escrow_id",
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "name": "post_fx_quote",
+      "docs": [
+        "Post an RFQ quote to the FX venue (KYC tier 2+ required)"
+      ],
+      "discriminator": [
+        73,
+        188,
+        248,
+        116,
+        3,
+        9,
+        167,
+        170
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  116,
+                  111,
+                  99,
+                  111,
+                  108,
+                  45,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "fx_venue",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  102,
+                  120,
+                  45,
+                  118,
+                  101,
+                  110,
+                  117,
+                  101
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "params.venue"
+              }
+            ]
+          }
+        },
+        {
+          "name": "rfq_quote",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  102,
+                  113,
+                  45,
+                  113,
+                  117,
+                  111,
+                  116,
+                  101
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "params.quote_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "market_maker_kyc",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  107,
+                  121,
+                  99,
+                  45,
+                  114,
+                  101,
+                  99,
+                  111,
+                  114,
+                  100
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "market_maker_institution_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "market_maker",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "params",
+          "type": {
+            "defined": {
+              "name": "QuoteParams"
+            }
+          }
+        },
+        {
+          "name": "market_maker_institution_id",
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "name": "refund_escrow",
+      "docs": [
+        "Refund escrow after expiry"
+      ],
+      "discriminator": [
+        107,
+        186,
+        89,
+        99,
+        26,
+        194,
+        23,
+        204
+      ],
+      "accounts": [
+        {
+          "name": "escrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "escrow_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault_token_account",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "escrow_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "importer_token_account",
+          "writable": true
+        },
+        {
+          "name": "token_mint"
+        },
+        {
+          "name": "importer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "token_program"
+        }
+      ],
+      "args": [
+        {
+          "name": "escrow_id",
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "name": "register_institution",
+      "docs": [
+        "Register a new institution with KYC record"
+      ],
+      "discriminator": [
+        77,
+        234,
+        193,
+        118,
+        107,
+        20,
+        106,
+        52
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  116,
+                  111,
+                  99,
+                  111,
+                  108,
+                  45,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "kyc_registry",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  107,
+                  121,
+                  99,
+                  45,
+                  114,
+                  101,
+                  103,
+                  105,
+                  115,
+                  116,
+                  114,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "kyc_record",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  107,
+                  121,
+                  99,
+                  45,
+                  114,
+                  101,
+                  99,
+                  111,
+                  114,
+                  100
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "institution_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "institution_id",
+          "type": "string"
+        },
+        {
+          "name": "wallet",
+          "type": "pubkey"
+        },
+        {
+          "name": "kyc_tier",
+          "type": "u8"
+        },
+        {
+          "name": "jurisdiction",
+          "type": "string"
+        },
+        {
+          "name": "vasp_id",
+          "type": "string"
+        },
+        {
+          "name": "expires_at",
+          "type": "i64"
+        }
+      ]
+    },
+    {
+      "name": "remove_fx_liquidity",
+      "docs": [
+        "Remove liquidity from an FX venue pool"
+      ],
+      "discriminator": [
+        26,
+        165,
+        126,
+        26,
+        25,
+        121,
+        229,
+        147
+      ],
+      "accounts": [
+        {
+          "name": "fx_venue",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  102,
+                  120,
+                  45,
+                  118,
+                  101,
+                  110,
+                  117,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "base_mint"
+              },
+              {
+                "kind": "account",
+                "path": "quote_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "lp_position",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  108,
+                  112,
+                  45,
+                  112,
+                  111,
+                  115,
+                  105,
+                  116,
+                  105,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "fx_venue"
+              },
+              {
+                "kind": "account",
+                "path": "provider"
+              }
+            ]
+          }
+        },
+        {
+          "name": "fx_vault_base",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  102,
+                  120,
+                  45,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  45,
+                  98,
+                  97,
+                  115,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "fx_venue"
+              }
+            ]
+          }
+        },
+        {
+          "name": "fx_vault_quote",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  102,
+                  120,
+                  45,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  45,
+                  113,
+                  117,
+                  111,
+                  116,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "fx_venue"
+              }
+            ]
+          }
+        },
+        {
+          "name": "provider_base_account",
+          "writable": true
+        },
+        {
+          "name": "provider_quote_account",
+          "writable": true
+        },
+        {
+          "name": "base_mint"
+        },
+        {
+          "name": "quote_mint"
+        },
+        {
+          "name": "provider",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "token_program"
+        }
+      ],
+      "args": [
+        {
+          "name": "lp_amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "resolve_dispute",
+      "docs": [
+        "Resolve a dispute (admin only)"
+      ],
+      "discriminator": [
+        231,
+        6,
+        202,
+        6,
+        96,
+        103,
+        12,
+        230
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  116,
+                  111,
+                  99,
+                  111,
+                  108,
+                  45,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "escrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "escrow_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault_token_account",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "escrow_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "importer_token_account",
+          "writable": true
+        },
+        {
+          "name": "token_mint"
+        },
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "token_program"
+        }
+      ],
+      "args": [
+        {
+          "name": "escrow_id",
+          "type": "string"
+        },
+        {
+          "name": "ruling",
+          "type": {
+            "defined": {
+              "name": "DisputeRuling"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "revoke_kyc_record",
+      "docs": [
+        "Revoke a KYC record (admin only)"
+      ],
+      "discriminator": [
+        185,
+        13,
+        250,
+        220,
+        40,
+        143,
+        115,
+        86
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  116,
+                  111,
+                  99,
+                  111,
+                  108,
+                  45,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "kyc_record",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  107,
+                  121,
+                  99,
+                  45,
+                  114,
+                  101,
+                  99,
+                  111,
+                  114,
+                  100
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "institution_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "institution_id",
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "name": "submit_condition",
+      "docs": [
+        "Submit proof for a condition to mark it satisfied"
+      ],
+      "discriminator": [
+        72,
+        61,
+        21,
+        185,
+        234,
+        132,
+        52,
+        217
+      ],
+      "accounts": [
+        {
+          "name": "escrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "escrow_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "submitter",
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "escrow_id",
+          "type": "string"
+        },
+        {
+          "name": "proof",
+          "type": {
+            "defined": {
+              "name": "ConditionProof"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "update_kyc_record",
+      "docs": [
+        "Update KYC record tier and expiry (admin only)"
+      ],
+      "discriminator": [
+        113,
+        239,
+        61,
+        60,
+        75,
+        199,
+        127,
+        164
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  116,
+                  111,
+                  99,
+                  111,
+                  108,
+                  45,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "kyc_record",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  107,
+                  121,
+                  99,
+                  45,
+                  114,
+                  101,
+                  99,
+                  111,
+                  114,
+                  100
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "institution_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "institution_id",
+          "type": "string"
+        },
+        {
+          "name": "new_tier",
+          "type": "u8"
+        },
+        {
+          "name": "new_expiry",
+          "type": "i64"
+        },
+        {
+          "name": "new_aml_risk_score",
+          "type": {
+            "option": "u8"
+          }
+        }
+      ]
+    },
+    {
+      "name": "verify_lineage_chain",
+      "docs": [
+        "Verify a fund lineage chain for regulatory inspection",
+        "Pass ordered chain records via remaining_accounts (oldest first)"
+      ],
+      "discriminator": [
+        117,
+        197,
+        69,
+        14,
+        27,
+        209,
+        76,
+        102
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  116,
+                  111,
+                  99,
+                  111,
+                  108,
+                  45,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "institution_id",
+          "type": "string"
+        },
+        {
+          "name": "start_record",
+          "type": "pubkey"
+        },
+        {
+          "name": "end_record",
+          "type": "pubkey"
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "EscrowAccount",
+      "discriminator": [
+        36,
+        69,
+        48,
+        18,
+        128,
+        225,
+        125,
+        135
+      ]
+    },
+    {
+      "name": "FundLineageRecord",
+      "discriminator": [
+        220,
+        129,
+        109,
+        144,
+        213,
+        61,
+        233,
+        114
+      ]
+    },
+    {
+      "name": "FxVenue",
+      "discriminator": [
+        245,
+        242,
+        101,
+        90,
+        177,
+        101,
+        225,
+        8
+      ]
+    },
+    {
+      "name": "KycRecord",
+      "discriminator": [
+        60,
+        42,
+        41,
+        19,
+        198,
+        74,
+        18,
+        101
+      ]
+    },
+    {
+      "name": "KycRegistry",
+      "discriminator": [
+        204,
+        241,
+        19,
+        79,
+        46,
+        77,
+        56,
+        20
+      ]
+    },
+    {
+      "name": "LiquidityPosition",
+      "discriminator": [
+        153,
+        56,
+        106,
+        34,
+        55,
+        42,
+        113,
+        176
+      ]
+    },
+    {
+      "name": "ProtocolConfig",
+      "discriminator": [
+        207,
+        91,
+        250,
+        28,
+        152,
+        179,
+        215,
+        209
+      ]
+    },
+    {
+      "name": "RfqQuote",
+      "discriminator": [
+        145,
+        52,
+        8,
+        29,
+        156,
+        146,
+        29,
+        195
+      ]
+    },
+    {
+      "name": "TravelRuleLog",
+      "discriminator": [
+        71,
+        4,
+        134,
+        101,
+        162,
+        120,
+        55,
+        10
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "AmlFlagRaised",
+      "discriminator": [
+        158,
+        236,
+        99,
+        4,
+        109,
+        64,
+        189,
+        63
+      ]
+    },
+    {
+      "name": "CollateralDeposited",
+      "discriminator": [
+        244,
+        62,
+        77,
+        11,
+        135,
+        112,
+        61,
+        96
+      ]
+    },
+    {
+      "name": "CollateralHealthUpdated",
+      "discriminator": [
+        91,
+        60,
+        43,
+        148,
+        20,
+        96,
+        79,
+        52
+      ]
+    },
+    {
+      "name": "CollateralLiquidated",
+      "discriminator": [
+        148,
+        42,
+        28,
+        104,
+        72,
+        50,
+        124,
+        98
+      ]
+    },
+    {
+      "name": "ConditionSatisfied",
+      "discriminator": [
+        251,
+        224,
+        70,
+        166,
+        73,
+        225,
+        219,
+        4
+      ]
+    },
+    {
+      "name": "DisputeRaised",
+      "discriminator": [
+        246,
+        167,
+        109,
+        37,
+        142,
+        45,
+        38,
+        176
+      ]
+    },
+    {
+      "name": "DisputeResolved",
+      "discriminator": [
+        121,
+        64,
+        249,
+        153,
+        139,
+        128,
+        236,
+        187
+      ]
+    },
+    {
+      "name": "EscrowCreated",
+      "discriminator": [
+        70,
+        127,
+        105,
+        102,
+        92,
+        97,
+        7,
+        173
+      ]
+    },
+    {
+      "name": "EscrowFunded",
+      "discriminator": [
+        228,
+        243,
+        166,
+        74,
+        22,
+        167,
+        157,
+        244
+      ]
+    },
+    {
+      "name": "EscrowRefunded",
+      "discriminator": [
+        132,
+        209,
+        49,
+        109,
+        135,
+        138,
+        28,
+        81
+      ]
+    },
+    {
+      "name": "EscrowSettled",
+      "discriminator": [
+        97,
+        27,
+        150,
+        55,
+        203,
+        179,
+        173,
+        23
+      ]
+    },
+    {
+      "name": "FxQuoteFilled",
+      "discriminator": [
+        64,
+        99,
+        24,
+        211,
+        167,
+        62,
+        60,
+        75
+      ]
+    },
+    {
+      "name": "FxQuotePosted",
+      "discriminator": [
+        59,
+        98,
+        127,
+        57,
+        21,
+        142,
+        220,
+        1
+      ]
+    },
+    {
+      "name": "KycRegistered",
+      "discriminator": [
+        141,
+        210,
+        224,
+        167,
+        36,
+        212,
+        92,
+        80
+      ]
+    },
+    {
+      "name": "KycRevoked",
+      "discriminator": [
+        205,
+        46,
+        180,
+        9,
+        213,
+        21,
+        197,
+        62
+      ]
+    },
+    {
+      "name": "LineageChainVerified",
+      "discriminator": [
+        19,
+        244,
+        72,
+        82,
+        118,
+        189,
+        36,
+        92
+      ]
+    },
+    {
+      "name": "LineageRecordCreated",
+      "discriminator": [
+        63,
+        113,
+        174,
+        193,
+        143,
+        196,
+        63,
+        42
+      ]
+    },
+    {
+      "name": "TravelRuleEmitted",
+      "discriminator": [
+        18,
+        199,
+        210,
+        187,
+        112,
+        66,
+        78,
+        56
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "InstitutionNotKyced",
+      "msg": "Institution is not KYC registered"
+    },
+    {
+      "code": 6001,
+      "name": "KycExpired",
+      "msg": "KYC record has expired"
+    },
+    {
+      "code": 6002,
+      "name": "KycTierInsufficient",
+      "msg": "KYC tier is insufficient for this operation"
+    },
+    {
+      "code": 6003,
+      "name": "KycRevoked",
+      "msg": "KYC record has been revoked"
+    },
+    {
+      "code": 6004,
+      "name": "AmlSanctionsMatch",
+      "msg": "Address matches sanctions list"
+    },
+    {
+      "code": 6005,
+      "name": "AmlRiskScoreTooHigh",
+      "msg": "AML risk score exceeds permitted threshold"
+    },
+    {
+      "code": 6006,
+      "name": "AmlCheckRequired",
+      "msg": "AML check is required before proceeding"
+    },
+    {
+      "code": 6007,
+      "name": "EscrowAlreadyFunded",
+      "msg": "Escrow has already been funded"
+    },
+    {
+      "code": 6008,
+      "name": "EscrowNotFunded",
+      "msg": "Escrow has not been funded yet"
+    },
+    {
+      "code": 6009,
+      "name": "EscrowAlreadySettled",
+      "msg": "Escrow has already been settled"
+    },
+    {
+      "code": 6010,
+      "name": "EscrowExpired",
+      "msg": "Escrow has expired"
+    },
+    {
+      "code": 6011,
+      "name": "EscrowInDispute",
+      "msg": "Escrow is currently in dispute"
+    },
+    {
+      "code": 6012,
+      "name": "EscrowNotInDispute",
+      "msg": "Escrow is not in dispute"
+    },
+    {
+      "code": 6013,
+      "name": "ConditionAlreadySatisfied",
+      "msg": "Condition has already been satisfied"
+    },
+    {
+      "code": 6014,
+      "name": "ConditionIndexOutOfBounds",
+      "msg": "Condition index is out of bounds"
+    },
+    {
+      "code": 6015,
+      "name": "ConditionProofInvalid",
+      "msg": "Condition proof is invalid"
+    },
+    {
+      "code": 6016,
+      "name": "DocumentHashMismatch",
+      "msg": "Document hash does not match condition requirement"
+    },
+    {
+      "code": 6017,
+      "name": "OracleValueMismatch",
+      "msg": "Oracle value does not match expected condition value"
+    },
+    {
+      "code": 6018,
+      "name": "NotAllConditionsSatisfied",
+      "msg": "Not all conditions have been satisfied"
+    },
+    {
+      "code": 6019,
+      "name": "DisputeWindowActive",
+      "msg": "Dispute window is still active"
+    },
+    {
+      "code": 6020,
+      "name": "DisputeWindowExpired",
+      "msg": "Dispute window has expired"
+    },
+    {
+      "code": 6021,
+      "name": "UnauthorizedDispute",
+      "msg": "Unauthorized to raise dispute"
+    },
+    {
+      "code": 6022,
+      "name": "QuoteExpired",
+      "msg": "Quote has expired"
+    },
+    {
+      "code": 6023,
+      "name": "QuoteAlreadyFilled",
+      "msg": "Quote has already been filled"
+    },
+    {
+      "code": 6024,
+      "name": "RateOutsideBand",
+      "msg": "Rate is outside permitted band"
+    },
+    {
+      "code": 6025,
+      "name": "RateDeviationExceedsSixBfi",
+      "msg": "Rate deviation exceeds SIX BFI reference rate threshold"
+    },
+    {
+      "code": 6026,
+      "name": "InsufficientLiquidity",
+      "msg": "Insufficient liquidity in FX pool"
+    },
+    {
+      "code": 6027,
+      "name": "SlippageExceeded",
+      "msg": "Slippage exceeds permitted maximum"
+    },
+    {
+      "code": 6028,
+      "name": "InvalidFxPair",
+      "msg": "Invalid FX pair"
+    },
+    {
+      "code": 6029,
+      "name": "RateOracleUnavailable",
+      "msg": "Rate oracle is unavailable"
+    },
+    {
+      "code": 6030,
+      "name": "TravelRuleThresholdExceeded",
+      "msg": "Transfer amount exceeds travel rule threshold but data is missing"
+    },
+    {
+      "code": 6031,
+      "name": "TravelRuleDataMissing",
+      "msg": "Travel rule data is missing or incomplete"
+    },
+    {
+      "code": 6032,
+      "name": "Unauthorized",
+      "msg": "Unauthorized operation"
+    },
+    {
+      "code": 6033,
+      "name": "InvalidAmount",
+      "msg": "Invalid amount"
+    },
+    {
+      "code": 6034,
+      "name": "ArithmeticOverflow",
+      "msg": "Arithmetic overflow"
+    },
+    {
+      "code": 6035,
+      "name": "InvalidTimestamp",
+      "msg": "Invalid timestamp"
+    },
+    {
+      "code": 6036,
+      "name": "ProtocolPaused",
+      "msg": "Protocol is currently paused"
+    },
+    {
+      "code": 6037,
+      "name": "MaxConditionsReached",
+      "msg": "Maximum number of conditions reached"
+    },
+    {
+      "code": 6038,
+      "name": "VenueNotActive",
+      "msg": "FX venue is not active"
+    },
+    {
+      "code": 6039,
+      "name": "InvalidEscrowStatus",
+      "msg": "Escrow is not in the correct status for this operation"
+    },
+    {
+      "code": 6040,
+      "name": "CollateralValueInsufficient",
+      "msg": "Collateral USD value is insufficient to cover required LTV"
+    },
+    {
+      "code": 6041,
+      "name": "CollateralLtvExceeded",
+      "msg": "Current LTV exceeds liquidation threshold"
+    },
+    {
+      "code": 6042,
+      "name": "CollateralPriceStale",
+      "msg": "Collateral price data is stale"
+    },
+    {
+      "code": 6043,
+      "name": "CollateralAlreadyLiquidated",
+      "msg": "Collateral has already been liquidated"
+    },
+    {
+      "code": 6044,
+      "name": "InvalidCollateralMint",
+      "msg": "Invalid collateral token mint"
+    },
+    {
+      "code": 6045,
+      "name": "InvalidLineageChain",
+      "msg": "Invalid lineage chain: record does not link to expected previous"
+    },
+    {
+      "code": 6046,
+      "name": "LineageAttestationMissing",
+      "msg": "Lineage attestation is missing (all-zero bytes)"
+    }
+  ],
+  "types": [
+    {
+      "name": "AmlFlagRaised",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "wallet",
+            "type": "pubkey"
+          },
+          {
+            "name": "institution_id",
+            "type": "string"
+          },
+          {
+            "name": "risk_score",
+            "type": "u8"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CollateralConfig",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "collateral_type",
+            "type": {
+              "defined": {
+                "name": "CollateralType"
+              }
+            }
+          },
+          {
+            "name": "collateral_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "collateral_amount",
+            "type": "u64"
+          },
+          {
+            "name": "six_bfi_valor_bc",
+            "type": "string"
+          },
+          {
+            "name": "collateral_price_usd",
+            "type": "i64"
+          },
+          {
+            "name": "collateral_price_updated",
+            "type": "i64"
+          },
+          {
+            "name": "ltv_bps",
+            "type": "u16"
+          },
+          {
+            "name": "liquidation_threshold_bps",
+            "type": "u16"
+          },
+          {
+            "name": "is_liquidated",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CollateralDeposited",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "escrow_id",
+            "type": "string"
+          },
+          {
+            "name": "collateral_type",
+            "type": "u8"
+          },
+          {
+            "name": "collateral_amount",
+            "type": "u64"
+          },
+          {
+            "name": "usd_value",
+            "type": "i64"
+          },
+          {
+            "name": "ltv_bps",
+            "type": "u16"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CollateralHealthUpdated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "escrow_id",
+            "type": "string"
+          },
+          {
+            "name": "current_ltv_bps",
+            "type": "u16"
+          },
+          {
+            "name": "threshold_bps",
+            "type": "u16"
+          },
+          {
+            "name": "is_healthy",
+            "type": "bool"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CollateralLiquidated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "escrow_id",
+            "type": "string"
+          },
+          {
+            "name": "collateral_amount",
+            "type": "u64"
+          },
+          {
+            "name": "usd_value_at_liquidation",
+            "type": "i64"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CollateralType",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Stablecoin"
+          },
+          {
+            "name": "TokenizedGold"
+          },
+          {
+            "name": "TokenizedSilver"
+          },
+          {
+            "name": "TokenizedPlatinum"
+          },
+          {
+            "name": "CommodityRwa"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ConditionProof",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "condition_index",
+            "type": "u8"
+          },
+          {
+            "name": "document_hash",
+            "type": {
+              "option": {
+                "array": [
+                  "u8",
+                  32
+                ]
+              }
+            }
+          },
+          {
+            "name": "oracle_value",
+            "type": {
+              "option": "i64"
+            }
+          },
+          {
+            "name": "approver_signatures",
+            "type": {
+              "vec": {
+                "array": [
+                  "u8",
+                  64
+                ]
+              }
+            }
+          },
+          {
+            "name": "proof_timestamp",
+            "type": "i64"
+          },
+          {
+            "name": "metadata_uri",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ConditionSatisfied",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "escrow_id",
+            "type": "string"
+          },
+          {
+            "name": "condition_index",
+            "type": "u8"
+          },
+          {
+            "name": "condition_type",
+            "type": "u8"
+          },
+          {
+            "name": "satisfied_by",
+            "type": "pubkey"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ConditionType",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "DocumentHash"
+          },
+          {
+            "name": "OracleConfirm"
+          },
+          {
+            "name": "TimeBased"
+          },
+          {
+            "name": "MultiSigApproval"
+          },
+          {
+            "name": "ManualApproval"
+          }
+        ]
+      }
+    },
+    {
+      "name": "DisputeRaised",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "escrow_id",
+            "type": "string"
+          },
+          {
+            "name": "importer",
+            "type": "pubkey"
+          },
+          {
+            "name": "reason",
+            "type": "string"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "DisputeResolved",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "escrow_id",
+            "type": "string"
+          },
+          {
+            "name": "ruling",
+            "type": "u8"
+          },
+          {
+            "name": "resolved_by",
+            "type": "pubkey"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "DisputeRuling",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "ExporterWins"
+          },
+          {
+            "name": "ImporterWins"
+          }
+        ]
+      }
+    },
+    {
+      "name": "EscrowAccount",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "escrow_id",
+            "type": "string"
+          },
+          {
+            "name": "importer",
+            "type": "pubkey"
+          },
+          {
+            "name": "exporter",
+            "type": "pubkey"
+          },
+          {
+            "name": "importer_institution_id",
+            "type": "string"
+          },
+          {
+            "name": "exporter_institution_id",
+            "type": "string"
+          },
+          {
+            "name": "token_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "vault_token_account",
+            "type": "pubkey"
+          },
+          {
+            "name": "deposit_amount",
+            "type": "u64"
+          },
+          {
+            "name": "released_amount",
+            "type": "u64"
+          },
+          {
+            "name": "settlement_currency_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "fx_rate_band_bps",
+            "type": "u16"
+          },
+          {
+            "name": "conditions",
+            "type": {
+              "vec": {
+                "defined": {
+                  "name": "TradeCondition"
+                }
+              }
+            }
+          },
+          {
+            "name": "conditions_satisfied",
+            "type": "u8"
+          },
+          {
+            "name": "status",
+            "type": {
+              "defined": {
+                "name": "EscrowStatus"
+              }
+            }
+          },
+          {
+            "name": "dispute_window_hours",
+            "type": "u8"
+          },
+          {
+            "name": "dispute_raised_at",
+            "type": {
+              "option": "i64"
+            }
+          },
+          {
+            "name": "created_at",
+            "type": "i64"
+          },
+          {
+            "name": "funded_at",
+            "type": {
+              "option": "i64"
+            }
+          },
+          {
+            "name": "settled_at",
+            "type": {
+              "option": "i64"
+            }
+          },
+          {
+            "name": "expires_at",
+            "type": "i64"
+          },
+          {
+            "name": "travel_rule_attached",
+            "type": "bool"
+          },
+          {
+            "name": "source_of_funds_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "collateral",
+            "type": {
+              "option": {
+                "defined": {
+                  "name": "CollateralConfig"
+                }
+              }
+            }
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "EscrowCreated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "escrow_id",
+            "type": "string"
+          },
+          {
+            "name": "importer",
+            "type": "pubkey"
+          },
+          {
+            "name": "exporter",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "token_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "conditions_count",
+            "type": "u8"
+          },
+          {
+            "name": "expires_at",
+            "type": "i64"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "EscrowFunded",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "escrow_id",
+            "type": "string"
+          },
+          {
+            "name": "importer",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "EscrowRefunded",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "escrow_id",
+            "type": "string"
+          },
+          {
+            "name": "importer",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "EscrowSettled",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "escrow_id",
+            "type": "string"
+          },
+          {
+            "name": "importer",
+            "type": "pubkey"
+          },
+          {
+            "name": "exporter",
+            "type": "pubkey"
+          },
+          {
+            "name": "base_amount",
+            "type": "u64"
+          },
+          {
+            "name": "fx_rate",
+            "type": "i64"
+          },
+          {
+            "name": "settlement_amount",
+            "type": "u64"
+          },
+          {
+            "name": "settlement_currency",
+            "type": "pubkey"
+          },
+          {
+            "name": "settlement_ms",
+            "type": "u64"
+          },
+          {
+            "name": "travel_rule_log",
+            "type": "pubkey"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "EscrowStatus",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Created"
+          },
+          {
+            "name": "Funded"
+          },
+          {
+            "name": "ConditionsPartial"
+          },
+          {
+            "name": "ConditionsSatisfied"
+          },
+          {
+            "name": "InDispute"
+          },
+          {
+            "name": "Settled"
+          },
+          {
+            "name": "Refunded"
+          },
+          {
+            "name": "Expired"
+          }
+        ]
+      }
+    },
+    {
+      "name": "FundLineageRecord",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "record_id",
+            "docs": [
+              "UUID — validated to MAX_RECORD_ID_LEN in create_lineage_record handler"
+            ],
+            "type": "string"
+          },
+          {
+            "name": "institution_id",
+            "docs": [
+              "Validated to MAX_INSTITUTION_ID_LEN in create_lineage_record handler"
+            ],
+            "type": "string"
+          },
+          {
+            "name": "wallet",
+            "type": "pubkey"
+          },
+          {
+            "name": "escrow",
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "event_type",
+            "type": {
+              "defined": {
+                "name": "LineageEventType"
+              }
+            }
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "token_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "source_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "previous_record",
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "transaction_signature",
+            "docs": [
+              "Validated to MAX_TX_SIG_LEN in create_lineage_record handler"
+            ],
+            "type": "string"
+          },
+          {
+            "name": "block_time",
+            "type": "i64"
+          },
+          {
+            "name": "attestation",
+            "type": {
+              "array": [
+                "u8",
+                64
+              ]
+            }
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "FxExecutionMode",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "RfqQuote"
+          },
+          {
+            "name": "AmmPool"
+          },
+          {
+            "name": "BestAvailable"
+          }
+        ]
+      }
+    },
+    {
+      "name": "FxExecutionParams",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "quote_id",
+            "type": {
+              "option": "string"
+            }
+          },
+          {
+            "name": "max_slippage_bps",
+            "type": "u16"
+          },
+          {
+            "name": "execution_mode",
+            "type": {
+              "defined": {
+                "name": "FxExecutionMode"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "FxQuoteFilled",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "quote_id",
+            "type": "string"
+          },
+          {
+            "name": "filled_by",
+            "type": "pubkey"
+          },
+          {
+            "name": "fill_amount",
+            "type": "u64"
+          },
+          {
+            "name": "rate",
+            "type": "i64"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "FxQuotePosted",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "quote_id",
+            "type": "string"
+          },
+          {
+            "name": "market_maker",
+            "type": "pubkey"
+          },
+          {
+            "name": "base_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "quote_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "rate",
+            "type": "i64"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "valid_until",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "FxVenue",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "venue_id",
+            "type": "string"
+          },
+          {
+            "name": "base_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "quote_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "total_base_liquidity",
+            "type": "u64"
+          },
+          {
+            "name": "total_quote_liquidity",
+            "type": "u64"
+          },
+          {
+            "name": "fee_bps",
+            "type": "u16"
+          },
+          {
+            "name": "active_quotes",
+            "type": {
+              "vec": "pubkey"
+            }
+          },
+          {
+            "name": "six_bfi_rate",
+            "type": "i64"
+          },
+          {
+            "name": "six_bfi_updated_at",
+            "type": "i64"
+          },
+          {
+            "name": "max_rate_deviation_bps",
+            "type": "u16"
+          },
+          {
+            "name": "is_active",
+            "type": "bool"
+          },
+          {
+            "name": "total_lp_shares",
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "KycRecord",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "institution_id",
+            "type": "string"
+          },
+          {
+            "name": "wallet",
+            "type": "pubkey"
+          },
+          {
+            "name": "kyc_tier",
+            "type": "u8"
+          },
+          {
+            "name": "jurisdiction",
+            "type": "string"
+          },
+          {
+            "name": "verified_at",
+            "type": "i64"
+          },
+          {
+            "name": "expires_at",
+            "type": "i64"
+          },
+          {
+            "name": "is_active",
+            "type": "bool"
+          },
+          {
+            "name": "aml_risk_score",
+            "type": "u8"
+          },
+          {
+            "name": "last_aml_check",
+            "type": "i64"
+          },
+          {
+            "name": "travel_rule_vasp_id",
+            "type": "string"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "KycRegistered",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "institution_id",
+            "type": "string"
+          },
+          {
+            "name": "wallet",
+            "type": "pubkey"
+          },
+          {
+            "name": "tier",
+            "type": "u8"
+          },
+          {
+            "name": "jurisdiction",
+            "type": "string"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "KycRegistry",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "registry_id",
+            "type": "string"
+          },
+          {
+            "name": "admin",
+            "type": "pubkey"
+          },
+          {
+            "name": "total_institutions",
+            "type": "u32"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "KycRevoked",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "institution_id",
+            "type": "string"
+          },
+          {
+            "name": "revoked_by",
+            "type": "pubkey"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "LineageChainVerified",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "institution_id",
+            "type": "string"
+          },
+          {
+            "name": "start_record",
+            "type": "pubkey"
+          },
+          {
+            "name": "end_record",
+            "type": "pubkey"
+          },
+          {
+            "name": "chain_length",
+            "type": "u32"
+          },
+          {
+            "name": "total_value",
+            "type": "u64"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "LineageEventType",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "InitialDeposit"
+          },
+          {
+            "name": "EscrowFunding"
+          },
+          {
+            "name": "EscrowSettlement"
+          },
+          {
+            "name": "EscrowRefund"
+          },
+          {
+            "name": "YieldAccrual"
+          },
+          {
+            "name": "CollateralDeposit"
+          },
+          {
+            "name": "CollateralReturn"
+          }
+        ]
+      }
+    },
+    {
+      "name": "LineageRecordCreated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "record_id",
+            "type": "string"
+          },
+          {
+            "name": "institution_id",
+            "type": "string"
+          },
+          {
+            "name": "wallet",
+            "type": "pubkey"
+          },
+          {
+            "name": "event_type",
+            "type": {
+              "defined": {
+                "name": "LineageEventType"
+              }
+            }
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "previous_record",
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "LiquidityPosition",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "provider",
+            "type": "pubkey"
+          },
+          {
+            "name": "venue",
+            "type": "pubkey"
+          },
+          {
+            "name": "lp_shares",
+            "type": "u64"
+          },
+          {
+            "name": "base_deposited",
+            "type": "u64"
+          },
+          {
+            "name": "quote_deposited",
+            "type": "u64"
+          },
+          {
+            "name": "created_at",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ProtocolConfig",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "admin",
+            "type": "pubkey"
+          },
+          {
+            "name": "fee_bps",
+            "type": "u16"
+          },
+          {
+            "name": "kyc_registry",
+            "type": "pubkey"
+          },
+          {
+            "name": "is_paused",
+            "type": "bool"
+          },
+          {
+            "name": "treasury",
+            "type": "pubkey"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "QuoteParams",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "quote_id",
+            "type": "string"
+          },
+          {
+            "name": "venue",
+            "type": "pubkey"
+          },
+          {
+            "name": "base_amount",
+            "type": "u64"
+          },
+          {
+            "name": "rate",
+            "type": "i64"
+          },
+          {
+            "name": "side",
+            "type": {
+              "defined": {
+                "name": "QuoteSide"
+              }
+            }
+          },
+          {
+            "name": "valid_until",
+            "type": "i64"
+          },
+          {
+            "name": "min_fill_amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "QuoteSide",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Bid"
+          },
+          {
+            "name": "Ask"
+          }
+        ]
+      }
+    },
+    {
+      "name": "RfqQuote",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "quote_id",
+            "type": "string"
+          },
+          {
+            "name": "market_maker",
+            "type": "pubkey"
+          },
+          {
+            "name": "market_maker_institution_id",
+            "type": "string"
+          },
+          {
+            "name": "venue",
+            "type": "pubkey"
+          },
+          {
+            "name": "base_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "quote_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "base_amount",
+            "type": "u64"
+          },
+          {
+            "name": "rate",
+            "type": "i64"
+          },
+          {
+            "name": "side",
+            "type": {
+              "defined": {
+                "name": "QuoteSide"
+              }
+            }
+          },
+          {
+            "name": "valid_until",
+            "type": "i64"
+          },
+          {
+            "name": "min_fill_amount",
+            "type": "u64"
+          },
+          {
+            "name": "is_filled",
+            "type": "bool"
+          },
+          {
+            "name": "filled_at",
+            "type": {
+              "option": "i64"
+            }
+          },
+          {
+            "name": "filled_by",
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TradeCondition",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "condition_type",
+            "type": {
+              "defined": {
+                "name": "ConditionType"
+              }
+            }
+          },
+          {
+            "name": "description",
+            "type": "string"
+          },
+          {
+            "name": "document_hash",
+            "type": {
+              "option": {
+                "array": [
+                  "u8",
+                  32
+                ]
+              }
+            }
+          },
+          {
+            "name": "oracle_feed",
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "oracle_expected_value",
+            "type": {
+              "option": "i64"
+            }
+          },
+          {
+            "name": "deadline",
+            "type": {
+              "option": "i64"
+            }
+          },
+          {
+            "name": "is_satisfied",
+            "type": "bool"
+          },
+          {
+            "name": "satisfied_at",
+            "type": {
+              "option": "i64"
+            }
+          },
+          {
+            "name": "satisfied_by",
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "release_bps",
+            "type": "u16"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TradeParams",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "exporter",
+            "type": "pubkey"
+          },
+          {
+            "name": "exporter_institution_id",
+            "type": "string"
+          },
+          {
+            "name": "settlement_currency_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "fx_rate_band_bps",
+            "type": "u16"
+          },
+          {
+            "name": "conditions",
+            "type": {
+              "vec": {
+                "defined": {
+                  "name": "TradeCondition"
+                }
+              }
+            }
+          },
+          {
+            "name": "dispute_window_hours",
+            "type": "u8"
+          },
+          {
+            "name": "expires_at",
+            "type": "i64"
+          },
+          {
+            "name": "source_of_funds_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "travel_rule_data",
+            "type": {
+              "defined": {
+                "name": "TravelRuleData"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "TravelRuleData",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "originator_name",
+            "type": "string"
+          },
+          {
+            "name": "originator_account",
+            "type": "string"
+          },
+          {
+            "name": "beneficiary_name",
+            "type": "string"
+          },
+          {
+            "name": "beneficiary_account",
+            "type": "string"
+          },
+          {
+            "name": "transaction_reference",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TravelRuleEmitted",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "log_id",
+            "type": "string"
+          },
+          {
+            "name": "escrow",
+            "type": "pubkey"
+          },
+          {
+            "name": "transfer_amount",
+            "type": "u64"
+          },
+          {
+            "name": "originator_institution_id",
+            "type": "string"
+          },
+          {
+            "name": "beneficiary_institution_id",
+            "type": "string"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TravelRuleLog",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "log_id",
+            "type": "string"
+          },
+          {
+            "name": "escrow",
+            "type": "pubkey"
+          },
+          {
+            "name": "originator_institution_id",
+            "type": "string"
+          },
+          {
+            "name": "originator_wallet",
+            "type": "pubkey"
+          },
+          {
+            "name": "originator_name",
+            "type": "string"
+          },
+          {
+            "name": "originator_account",
+            "type": "string"
+          },
+          {
+            "name": "beneficiary_institution_id",
+            "type": "string"
+          },
+          {
+            "name": "beneficiary_wallet",
+            "type": "pubkey"
+          },
+          {
+            "name": "beneficiary_name",
+            "type": "string"
+          },
+          {
+            "name": "beneficiary_account",
+            "type": "string"
+          },
+          {
+            "name": "transfer_amount",
+            "type": "u64"
+          },
+          {
+            "name": "token_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "transaction_reference",
+            "type": "string"
+          },
+          {
+            "name": "created_at",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    }
+  ]
+}
