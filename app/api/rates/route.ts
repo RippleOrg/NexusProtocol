@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
-import { sixBfiClient } from "@/lib/integrations/six-bfi";
+import { getSixBfiClient } from "@/lib/integrations/six-bfi";
 import { getStreamClient } from "@/lib/integrations/six-bfi-stream";
 import { getFallbackRateByPair } from "@/lib/integrations/free-market-data";
+
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
 const FX_PAIRS = [
   { base: "USD", quote: "NGN", pair: "USD/NGN", label: "USDC/NGNC", valorBc: "199113_148" },
@@ -14,6 +17,7 @@ const FX_PAIRS = [
 
 export async function GET() {
   try {
+    const sixBfiClient = getSixBfiClient();
     const streamClient = getStreamClient();
     const fetchStart = Date.now();
 

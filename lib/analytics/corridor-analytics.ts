@@ -2,7 +2,7 @@ import crypto from "crypto";
 import type { PrismaClient as PrismaClientType } from "@prisma/client";
 import { getFallbackRateByPair } from "@/lib/integrations/free-market-data";
 import { getStreamClient } from "@/lib/integrations/six-bfi-stream";
-import { sixBfiClient } from "@/lib/integrations/six-bfi";
+import { getSixBfiClient } from "@/lib/integrations/six-bfi";
 import { deriveProtocolConfigPda } from "@/lib/nexus/onchain";
 import { withSolanaReadFallback } from "@/lib/server/solana-rpc";
 
@@ -347,6 +347,7 @@ export class CorridorAnalyticsEngine {
 
     // REST fallback
     try {
+      const sixBfiClient = getSixBfiClient();
       const [base, quote] = pair.split("/");
       if (base && quote) {
         const fxRate = await sixBfiClient.getFxRate(base, quote);

@@ -5,7 +5,7 @@
   "private": true,
   "scripts": {
     "postinstall": "prisma generate",
-    "build": "next build",
+    "build": "node scripts/vercel-build-init.cjs && next build",
     "dev": "next dev",
     "start": "next start",
     "lint": "next lint",

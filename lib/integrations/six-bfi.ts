@@ -1,6 +1,6 @@
 import https from "https";
-import fs from "fs";
 import axios, { AxiosInstance } from "axios";
+import { getSixMtlsCredentials } from "@/lib/integrations/six-credentials";
 
 export interface FxRate {
   pair: string;
@@ -83,16 +83,15 @@ let _httpsAgent: https.Agent | undefined | null = null;
 
 function buildHttpsAgent(): https.Agent | undefined {
   if (_httpsAgent !== null) return _httpsAgent;
-  const certPath = process.env.SIX_CERT_PATH;
-  const keyPath = process.env.SIX_KEY_PATH;
-  if (!certPath || !keyPath) {
+  const credentials = getSixMtlsCredentials();
+  if (!credentials) {
     _httpsAgent = undefined;
     return undefined;
   }
   _httpsAgent = new https.Agent({
-    cert: fs.readFileSync(certPath),
-    key: fs.readFileSync(keyPath),
-    passphrase: process.env.SIX_CERT_PASSWORD,
+    cert: credentials.cert,
+    key: credentials.key,
+    passphrase: credentials.passphrase,
   });
   return _httpsAgent;
 }
@@ -240,4 +239,12 @@ export class SixBfiClient {
   }
 }
 
-export const sixBfiClient = new SixBfiClient();
+let _sixBfiClient: SixBfiClient | null = null;
+
+export function getSixBfiClient() {
+  if (!_sixBfiClient) {
+    _sixBfiClient = new SixBfiClient();
+  }
+
+  return _sixBfiClient;
+}

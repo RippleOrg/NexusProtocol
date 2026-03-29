@@ -1,7 +1,7 @@
 import WebSocket from "ws";
 import https from "https";
-import fs from "fs";
 import { EventEmitter } from "events";
+import { getSixMtlsCredentials } from "@/lib/integrations/six-credentials";
 
 export interface StreamRate {
   valorBc: string;
@@ -70,13 +70,12 @@ export class SixBfiStreamClient extends EventEmitter {
   private isDestroyed = false;
 
   private buildTlsAgent(): https.Agent | undefined {
-    const certPath = process.env.SIX_CERT_PATH;
-    const keyPath = process.env.SIX_KEY_PATH;
-    if (!certPath || !keyPath) return undefined;
+    const credentials = getSixMtlsCredentials();
+    if (!credentials) return undefined;
     return new https.Agent({
-      cert: fs.readFileSync(certPath),
-      key: fs.readFileSync(keyPath),
-      passphrase: process.env.SIX_CERT_PASSWORD,
+      cert: credentials.cert,
+      key: credentials.key,
+      passphrase: credentials.passphrase,
     });
   }
 
@@ -84,6 +83,9 @@ export class SixBfiStreamClient extends EventEmitter {
     if (this.isDestroyed) return;
 
     const agent = this.buildTlsAgent();
+    if (!agent) {
+      return;
+    }
     const wsOptions: WebSocket.ClientOptions = agent ? { agent } : {};
 
     try {

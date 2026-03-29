@@ -703,6 +703,9 @@ REDIS_URL=redis://localhost:6379
 SIX_CERT_PATH=./certs/signed-certificate.pem
 SIX_KEY_PATH=./certs/private-key.pem
 SIX_CERT_PASSWORD=sixhackathon2026
+# Vercel-friendly alternative to file mounts:
+SIX_CERT_PEM="-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----"
+SIX_KEY_PEM="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----"
 ```
 
 #### Fireblocks MPC
@@ -949,6 +952,28 @@ SOL to create accounts and submit setup transactions.
 If you do not want seeded demo activity in a production-like environment, skip
 step 2. The protocol will still lazily initialize when the first institution
 completes KYC, but the dashboard will remain empty until real activity exists.
+
+#### Build-Time Initialization On Vercel
+
+`npm run build` now runs a small Vercel-only initialization step before
+`next build`.
+
+- If `DATABASE_URL` is present, it runs `prisma migrate deploy`.
+- If `NEXUS_RUN_DEVNET_SEED_ON_BUILD=true`, it also runs `scripts/seed-devnet.cjs`.
+- Outside Vercel, this init step is skipped unless you set
+  `NEXUS_RUN_BUILD_INIT=true`.
+
+Recommended Vercel envs for this behavior:
+
+```env
+DATABASE_URL=<production_database_url>
+NEXUS_ADMIN_SECRET_KEY_JSON=[...]
+NEXUS_RUN_DEVNET_SEED_ON_BUILD=false
+SKIP_BUILD_DB_INIT=false
+```
+
+Keep `NEXUS_RUN_DEVNET_SEED_ON_BUILD=false` for production unless you
+intentionally want every deployment to mutate devnet state.
 
 #### CLI Alternative
 

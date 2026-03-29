@@ -10,7 +10,6 @@ import { WalletModalProvider } from "@solana/wallet-adapter-react-ui";
 import {
   PhantomWalletAdapter,
   SolflareWalletAdapter,
-  UnsafeBurnerWalletAdapter,
 } from "@solana/wallet-adapter-wallets";
 import {
   QueryClient,
@@ -33,7 +32,6 @@ function SolanaProviders({
     () => [
       new PhantomWalletAdapter(),
       new SolflareWalletAdapter({ network: WalletAdapterNetwork.Devnet }),
-      new UnsafeBurnerWalletAdapter(),
     ],
     []
   );
