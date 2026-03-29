@@ -12,60 +12,60 @@ use anchor_spl::token_interface::{
 };
 
 #[derive(Accounts)]
-#[instruction(pool_id: String)]
+#[instruction(amount_a: u64, amount_b: u64, provider_institution_id: String)]
 pub struct AddFxLiquidity<'info> {
     #[account(
         mut,
-        seeds = [b"fx-venue", pool_id.as_bytes()],
+        seeds = [b"fx-venue", base_mint.key().as_ref(), quote_mint.key().as_ref()],
         bump = fx_venue.bump,
     )]
-    pub fx_venue: Account<'info, FxVenue>,
+    pub fx_venue: Box<Account<'info, FxVenue>>,
 
     #[account(
         init_if_needed,
         payer = provider,
         space = LiquidityPosition::SPACE,
-        seeds = [b"lp-position", pool_id.as_bytes(), provider.key().as_ref()],
+        seeds = [b"lp-position", fx_venue.key().as_ref(), provider.key().as_ref()],
         bump
     )]
-    pub lp_position: Account<'info, LiquidityPosition>,
+    pub lp_position: Box<Account<'info, LiquidityPosition>>,
 
     #[account(
         mut,
         seeds = [b"fx-vault-base", fx_venue.key().as_ref()],
         bump,
     )]
-    pub fx_vault_base: InterfaceAccount<'info, TokenAccount>,
+    pub fx_vault_base: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(
         mut,
         seeds = [b"fx-vault-quote", fx_venue.key().as_ref()],
         bump,
     )]
-    pub fx_vault_quote: InterfaceAccount<'info, TokenAccount>,
+    pub fx_vault_quote: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(
         mut,
         constraint = provider_base_account.owner == provider.key() @ NexusError::Unauthorized,
         constraint = provider_base_account.mint == fx_venue.base_mint @ NexusError::InvalidFxPair,
     )]
-    pub provider_base_account: InterfaceAccount<'info, TokenAccount>,
+    pub provider_base_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(
         mut,
         constraint = provider_quote_account.owner == provider.key() @ NexusError::Unauthorized,
         constraint = provider_quote_account.mint == fx_venue.quote_mint @ NexusError::InvalidFxPair,
     )]
-    pub provider_quote_account: InterfaceAccount<'info, TokenAccount>,
+    pub provider_quote_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
-    pub base_mint: InterfaceAccount<'info, Mint>,
-    pub quote_mint: InterfaceAccount<'info, Mint>,
+    pub base_mint: Box<InterfaceAccount<'info, Mint>>,
+    pub quote_mint: Box<InterfaceAccount<'info, Mint>>,
 
     #[account(
         seeds = [b"kyc-record", provider_institution_id.as_bytes()],
         bump = provider_kyc.bump,
     )]
-    pub provider_kyc: Account<'info, KycRecord>,
+    pub provider_kyc: Box<Account<'info, KycRecord>>,
 
     #[account(mut)]
     pub provider: Signer<'info>,
@@ -76,10 +76,9 @@ pub struct AddFxLiquidity<'info> {
 
 pub fn handler(
     ctx: Context<AddFxLiquidity>,
-    pool_id: String,
     amount_a: u64,
     amount_b: u64,
-    provider_institution_id: String,
+    _provider_institution_id: String,
 ) -> Result<()> {
     let now = Clock::get()?.unix_timestamp;
     let kyc = &ctx.accounts.provider_kyc;

@@ -44,6 +44,7 @@ pub struct RefundEscrow<'info> {
 
 pub fn handler(ctx: Context<RefundEscrow>, escrow_id: String) -> Result<()> {
     let now = Clock::get()?.unix_timestamp;
+    let escrow_account_info = ctx.accounts.escrow.to_account_info();
     let escrow = &mut ctx.accounts.escrow;
 
     require!(
@@ -79,7 +80,7 @@ pub fn handler(ctx: Context<RefundEscrow>, escrow_id: String) -> Result<()> {
                 from: ctx.accounts.vault_token_account.to_account_info(),
                 mint: ctx.accounts.token_mint.to_account_info(),
                 to: ctx.accounts.importer_token_account.to_account_info(),
-                authority: ctx.accounts.escrow.to_account_info(),
+                authority: escrow_account_info,
             },
             signer_seeds,
         ),

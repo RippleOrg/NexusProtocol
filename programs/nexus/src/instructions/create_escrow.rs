@@ -12,7 +12,12 @@ use anchor_lang::prelude::*;
 use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 
 #[derive(Accounts)]
-#[instruction(escrow_id: String)]
+#[instruction(
+    escrow_id: String,
+    deposit_amount: u64,
+    params: TradeParams,
+    importer_institution_id: String
+)]
 pub struct CreateEscrow<'info> {
     #[account(
         seeds = [b"protocol-config"],
@@ -38,7 +43,7 @@ pub struct CreateEscrow<'info> {
         seeds = [b"vault", escrow_id.as_bytes()],
         bump
     )]
-    pub vault_token_account: Account<'info, TokenAccount>,
+    pub vault_token_account: InterfaceAccount<'info, TokenAccount>,
 
     pub token_mint: InterfaceAccount<'info, Mint>,
 

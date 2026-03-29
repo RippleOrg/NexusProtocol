@@ -38,7 +38,7 @@ interface FireblocksAddressListResponse {
   legacyAddress?: string;
 }
 
-
+const SIGN_TIMEOUT_MS = 5 * 60 * 1000;
 
 // In-memory store for pending sign requests
 const pendingRequests = new Map<

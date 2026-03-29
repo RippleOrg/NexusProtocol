@@ -1,5 +1,5 @@
 use crate::errors::NexusError;
-use crate::state::fx_venue::{FxVenue, RfqQuote};
+use crate::state::fx_venue::RfqQuote;
 use anchor_lang::prelude::*;
 
 /// Validate that a quote is still valid (not expired, not filled)

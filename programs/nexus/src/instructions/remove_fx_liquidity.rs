@@ -8,51 +8,50 @@ use anchor_spl::token_interface::{
 };
 
 #[derive(Accounts)]
-#[instruction(pool_id: String)]
 pub struct RemoveFxLiquidity<'info> {
     #[account(
         mut,
-        seeds = [b"fx-venue", pool_id.as_bytes()],
+        seeds = [b"fx-venue", base_mint.key().as_ref(), quote_mint.key().as_ref()],
         bump = fx_venue.bump,
     )]
-    pub fx_venue: Account<'info, FxVenue>,
+    pub fx_venue: Box<Account<'info, FxVenue>>,
 
     #[account(
         mut,
-        seeds = [b"lp-position", pool_id.as_bytes(), provider.key().as_ref()],
+        seeds = [b"lp-position", fx_venue.key().as_ref(), provider.key().as_ref()],
         bump = lp_position.bump,
         constraint = lp_position.provider == provider.key() @ NexusError::Unauthorized,
     )]
-    pub lp_position: Account<'info, LiquidityPosition>,
+    pub lp_position: Box<Account<'info, LiquidityPosition>>,
 
     #[account(
         mut,
         seeds = [b"fx-vault-base", fx_venue.key().as_ref()],
         bump,
     )]
-    pub fx_vault_base: InterfaceAccount<'info, TokenAccount>,
+    pub fx_vault_base: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(
         mut,
         seeds = [b"fx-vault-quote", fx_venue.key().as_ref()],
         bump,
     )]
-    pub fx_vault_quote: InterfaceAccount<'info, TokenAccount>,
+    pub fx_vault_quote: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(
         mut,
         constraint = provider_base_account.owner == provider.key() @ NexusError::Unauthorized,
     )]
-    pub provider_base_account: InterfaceAccount<'info, TokenAccount>,
+    pub provider_base_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(
         mut,
         constraint = provider_quote_account.owner == provider.key() @ NexusError::Unauthorized,
     )]
-    pub provider_quote_account: InterfaceAccount<'info, TokenAccount>,
+    pub provider_quote_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
-    pub base_mint: InterfaceAccount<'info, Mint>,
-    pub quote_mint: InterfaceAccount<'info, Mint>,
+    pub base_mint: Box<InterfaceAccount<'info, Mint>>,
+    pub quote_mint: Box<InterfaceAccount<'info, Mint>>,
 
     #[account(mut)]
     pub provider: Signer<'info>,
@@ -62,7 +61,6 @@ pub struct RemoveFxLiquidity<'info> {
 
 pub fn handler(
     ctx: Context<RemoveFxLiquidity>,
-    pool_id: String,
     lp_amount: u64,
 ) -> Result<()> {
     let lp_pos = &ctx.accounts.lp_position;
@@ -98,10 +96,14 @@ pub fn handler(
     let base_decimals = ctx.accounts.base_mint.decimals;
     let quote_decimals = ctx.accounts.quote_mint.decimals;
     let venue_bump = venue.bump;
+    let base_mint_key = ctx.accounts.base_mint.key();
+    let quote_mint_key = ctx.accounts.quote_mint.key();
+    let venue_key = venue.key();
 
     let seeds = &[
         b"fx-venue".as_ref(),
-        pool_id.as_bytes(),
+        base_mint_key.as_ref(),
+        quote_mint_key.as_ref(),
         &[venue_bump],
     ];
     let signer_seeds = &[seeds.as_ref()];
@@ -155,6 +157,7 @@ pub fn handler(
         .lp_shares
         .checked_sub(lp_amount)
         .ok_or(NexusError::ArithmeticOverflow)?;
+    lp_pos_mut.venue = venue_key;
 
     Ok(())
 }

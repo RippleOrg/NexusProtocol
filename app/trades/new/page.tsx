@@ -1,518 +1,799 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
+import { Plus, Trash2 } from "lucide-react";
+import { useNexusSession } from "@/hooks/useNexusSession";
+import { nexusFetch } from "@/lib/client/nexus-client";
+import {
+  createAndFundEscrowOnChain,
+  type EscrowCreationProgress,
+} from "@/lib/nexus/client-program";
+import { useFxRates } from "@/hooks/useFxVenue";
+import { SUPPORTED_SETTLEMENT_INSTRUMENTS } from "@/lib/nexus/constants";
+import type {
+  EscrowRecord,
+  InstitutionDirectoryItem,
+  TradeConditionInput,
+  TradeConditionType,
+} from "@/lib/nexus/types";
 
-const SETTLEMENT_CURRENCIES = [
-  { value: "NGNC", label: "NGNC — Nigerian Naira Coin" },
-  { value: "EURC", label: "EURC — Euro Coin" },
-  { value: "KESC", label: "KESC — Kenyan Shilling Coin" },
-  { value: "GBPC", label: "GBPC — British Pound Coin" },
+const CONDITION_OPTIONS: Array<{
+  value: TradeConditionType;
+  label: string;
+  hint: string;
+}> = [
+  {
+    value: "DocumentHash",
+    label: "Document hash verification",
+    hint: "Release only when a hashed proof matches the source-of-funds or shipping file.",
+  },
+  {
+    value: "ManualApproval",
+    label: "Manual sign-off",
+    hint: "Require a human approval step before settlement progresses.",
+  },
+  {
+    value: "TimeBased",
+    label: "Time gate",
+    hint: "Hold release until a defined deadline has passed.",
+  },
+  {
+    value: "MultiSigApproval",
+    label: "Multi-sig approval",
+    hint: "Reserve the instruction for multi-party treasury approval.",
+  },
 ];
 
-const CONDITION_TYPES = [
-  { value: "DocumentHash", label: "Document Hash Verification" },
-  { value: "OracleConfirm", label: "Oracle Price Confirmation" },
-  { value: "TimeBased", label: "Time-Based Release" },
-  { value: "ManualApproval", label: "Manual Approval" },
-  { value: "MultiSigApproval", label: "Multi-Signature Approval" },
-];
+function createCondition(): TradeConditionInput {
+  return {
+    conditionType: "DocumentHash",
+    description: "",
+    documentHash: "",
+    releaseBps: 10_000,
+  };
+}
+
+function explorerUrl(signature: string) {
+  return `https://explorer.solana.com/tx/${signature}?cluster=devnet`;
+}
 
 export default function NewTradePage() {
   const router = useRouter();
-  const [step, setStep] = useState(1);
-  const [formData, setFormData] = useState({
-    // Step 1
-    exporterWallet: "",
-    exporterInstitutionId: "",
-    // Step 2
-    depositAmount: "",
-    settlementCurrency: "NGNC",
-    fxRateBandBps: 100,
-    expiresAt: "",
-    // Step 3
-    conditions: [
-      {
-        conditionType: "DocumentHash",
-        description: "",
-        documentHash: "",
-        releaseBps: 10000,
-      },
-    ],
-    // Step 4
+  const { authContext, institution, primaryWallet } = useNexusSession();
+  const fxRatesQuery = useFxRates();
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [walletProgress, setWalletProgress] =
+    useState<EscrowCreationProgress | null>(null);
+  const [confirmedSignatures, setConfirmedSignatures] = useState<
+    Array<{ label: string; signature: string }>
+  >([]);
+  const [counterpartyInstitutionId, setCounterpartyInstitutionId] = useState("");
+  const [settlementInstrument, setSettlementInstrument] = useState<
+    (typeof SUPPORTED_SETTLEMENT_INSTRUMENTS)[number]["code"]
+  >(SUPPORTED_SETTLEMENT_INSTRUMENTS[0].code);
+  const [depositAmountUsdc, setDepositAmountUsdc] = useState("");
+  const [fxRateBandBps, setFxRateBandBps] = useState(75);
+  const [expiresAt, setExpiresAt] = useState("");
+  const [sourceOfFundsHash, setSourceOfFundsHash] = useState("");
+  const [conditions, setConditions] = useState<TradeConditionInput[]>([
+    createCondition(),
+  ]);
+  const [travelRule, setTravelRule] = useState({
     originatorName: "",
     originatorAccount: "",
     beneficiaryName: "",
     beneficiaryAccount: "",
     transactionReference: "",
-    sourceOfFunds: "",
-    // Step 5
-    useFireblocks: false,
   });
 
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const directoryQuery = useQuery({
+    queryKey: ["institution-directory"],
+    queryFn: () =>
+      nexusFetch<{ institutions: InstitutionDirectoryItem[] }>(
+        "/api/institutions/directory",
+        { cache: "no-store" },
+        authContext
+      ),
+    enabled: Boolean(institution),
+    staleTime: 30_000,
+  });
 
-  const totalSteps = 5;
+  const selectedInstrument = useMemo(
+    () =>
+      SUPPORTED_SETTLEMENT_INSTRUMENTS.find(
+        (option) => option.code === settlementInstrument
+      ) ?? SUPPORTED_SETTLEMENT_INSTRUMENTS[0],
+    [settlementInstrument]
+  );
+
+  const selectedRate = useMemo(
+    () =>
+      fxRatesQuery.data?.find((rate) => rate.pair === selectedInstrument.pair),
+    [fxRatesQuery.data, selectedInstrument.pair]
+  );
+
+  const selectedCounterparty = useMemo(
+    () =>
+      directoryQuery.data?.institutions.find(
+        (counterparty) => counterparty.id === counterpartyInstitutionId
+      ),
+    [counterpartyInstitutionId, directoryQuery.data?.institutions]
+  );
+
+  useEffect(() => {
+    const requestedInstrument = new URLSearchParams(window.location.search).get(
+      "instrument"
+    );
+
+    if (
+      requestedInstrument &&
+      SUPPORTED_SETTLEMENT_INSTRUMENTS.some(
+        (instrument) => instrument.code === requestedInstrument
+      )
+    ) {
+      setSettlementInstrument(
+        requestedInstrument as (typeof SUPPORTED_SETTLEMENT_INSTRUMENTS)[number]["code"]
+      );
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!institution) {
+      return;
+    }
+
+    setTravelRule((current) => ({
+      ...current,
+      originatorName: current.originatorName || institution.name,
+    }));
+  }, [institution]);
+
+  useEffect(() => {
+    if (!selectedCounterparty) {
+      return;
+    }
+
+    setTravelRule((current) => ({
+      ...current,
+      beneficiaryName: current.beneficiaryName || selectedCounterparty.name,
+    }));
+  }, [selectedCounterparty]);
+
+  const handleConditionChange = (
+    index: number,
+    updates: Partial<TradeConditionInput>
+  ) => {
+    setConditions((current) =>
+      current.map((condition, currentIndex) =>
+        currentIndex === index ? { ...condition, ...updates } : condition
+      )
+    );
+  };
 
   const addCondition = () => {
-    if (formData.conditions.length >= 10) return;
-    setFormData((prev) => ({
-      ...prev,
-      conditions: [
-        ...prev.conditions,
-        {
-          conditionType: "DocumentHash",
-          description: "",
-          documentHash: "",
-          releaseBps: 0,
-        },
-      ],
-    }));
+    setConditions((current) => [...current, createCondition()]);
   };
 
   const removeCondition = (index: number) => {
-    setFormData((prev) => ({
-      ...prev,
-      conditions: prev.conditions.filter((_, i) => i !== index),
-    }));
+    setConditions((current) =>
+      current.length === 1
+        ? current
+        : current.filter((_, currentIndex) => currentIndex !== index)
+    );
   };
 
-  const submitEscrow = async () => {
+  const submitTrade = async () => {
     setSubmitting(true);
     setError(null);
+    setWalletProgress(null);
+    setConfirmedSignatures([]);
+
     try {
-      // In production, this would call the Anchor program
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-      router.push("/trades");
-    } catch (err) {
-      setError(String(err));
+      if (!institution) {
+        throw new Error("Complete onboarding before creating a trade");
+      }
+
+      if (!institution.onChainInstitutionId) {
+        throw new Error(
+          "Institution KYC is missing its on-chain identifier. Re-run onboarding to continue."
+        );
+      }
+
+      if (!selectedCounterparty) {
+        throw new Error("Select a counterparty institution");
+      }
+
+      if (!primaryWallet) {
+        throw new Error("Connect a primary wallet before creating a trade");
+      }
+
+      const tradeInput = {
+        counterpartyInstitutionId,
+        depositAmountUsdc: Number(depositAmountUsdc),
+        settlementInstrument: selectedInstrument.settlementMint,
+        fxPair: selectedInstrument.pair,
+        fxRateReference: selectedRate?.rate ?? 0,
+        fxRateBandBps,
+        expiresAt: new Date(expiresAt).toISOString(),
+        sourceOfFundsHash,
+        conditions,
+        travelRule,
+      };
+
+      const onChainTrade = await createAndFundEscrowOnChain({
+        wallet: primaryWallet,
+        importerInstitutionId: institution.onChainInstitutionId,
+        counterparty: selectedCounterparty,
+        trade: tradeInput,
+        onStatusChange: (progress) => {
+          setWalletProgress(progress);
+
+          if (progress.signature) {
+            const signature = progress.signature;
+            setConfirmedSignatures((current) => {
+              if (current.some((item) => item.signature === signature)) {
+                return current;
+              }
+
+              return [
+                ...current,
+                {
+                  label:
+                    progress.step === "ata_confirmed"
+                      ? "ATA setup"
+                      : progress.step === "create_confirmed"
+                        ? "Create escrow"
+                        : "Fund escrow",
+                  signature,
+                },
+              ];
+            });
+          }
+        },
+      });
+      setWalletProgress({
+        step: "fund_confirmed",
+        label: "Saving the trade record in the app ledger",
+      });
+
+      const payload = await nexusFetch<{ escrow: EscrowRecord }>(
+        "/api/escrows",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ...tradeInput,
+            escrowSeed: onChainTrade.escrowId,
+            onChainPda: onChainTrade.onChainPda,
+            travelRuleSeed: onChainTrade.travelRuleLogId,
+            travelRuleLogPda: onChainTrade.travelRuleLogPda,
+            createSignature: onChainTrade.createSignature,
+            fundSignature: onChainTrade.fundSignature,
+          }),
+        },
+        authContext
+      );
+
+      router.push(`/trades/${payload.escrow.id}`);
+    } catch (submitError) {
+      setError(
+        submitError instanceof Error
+          ? submitError.message
+          : "Failed to create trade"
+      );
     } finally {
       setSubmitting(false);
     }
   };
 
+  const canSubmit =
+    Boolean(counterpartyInstitutionId) &&
+    Boolean(institution?.onChainInstitutionId) &&
+    Boolean(primaryWallet?.address) &&
+    Boolean(depositAmountUsdc) &&
+    Number(depositAmountUsdc) > 0 &&
+    Boolean(expiresAt) &&
+    /^[a-fA-F0-9]{64}$/.test(sourceOfFundsHash) &&
+    conditions.every((condition) => condition.description.trim().length >= 4) &&
+    Boolean(travelRule.originatorName) &&
+    Boolean(travelRule.originatorAccount) &&
+    Boolean(travelRule.beneficiaryName) &&
+    Boolean(travelRule.beneficiaryAccount) &&
+    Boolean(travelRule.transactionReference) &&
+    Boolean(selectedRate);
+
+  const stepProgress = [
+    Boolean(selectedCounterparty),
+    Boolean(depositAmountUsdc) && Boolean(expiresAt) && Boolean(selectedRate),
+    conditions.every((condition) => condition.description.trim().length >= 4),
+    Boolean(sourceOfFundsHash) &&
+      Boolean(travelRule.originatorAccount) &&
+      Boolean(travelRule.beneficiaryAccount) &&
+      Boolean(travelRule.transactionReference),
+    canSubmit,
+  ];
+
   return (
-    <div className="p-6 max-w-3xl mx-auto">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-white">Create New Trade Escrow</h1>
-        <p className="text-gray-400 text-sm">Step {step} of {totalSteps}</p>
-      </div>
+    <div className="two-col">
+      <div className="panel">
+        <div className="panel-header">
+          <div className="panel-title">New Trade Escrow</div>
+          <span className="badge bb">
+            {selectedCounterparty?.name ? `LIVE: ${selectedCounterparty.name}` : "SELECT COUNTERPARTY"}
+          </span>
+        </div>
 
-      {/* Step Progress */}
-      <div className="flex gap-1 mb-8">
-        {Array.from({ length: totalSteps }, (_, i) => (
-          <div
-            key={i}
-            className={`flex-1 h-1 rounded-full ${
-              i + 1 <= step ? "bg-green-500" : "bg-gray-700"
-            }`}
-          />
-        ))}
-      </div>
-
-      <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 space-y-4">
-        {/* Step 1: Counterparty */}
-        {step === 1 && (
-          <>
-            <h2 className="text-white font-semibold">Counterparty Details</h2>
-            <div>
-              <label className="text-gray-400 text-sm block mb-1">
-                Exporter Wallet Address
-              </label>
-              <input
-                type="text"
-                value={formData.exporterWallet}
-                onChange={(e) =>
-                  setFormData((p) => ({ ...p, exporterWallet: e.target.value }))
-                }
-                placeholder="Solana wallet address (base58)"
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-green-500"
-              />
-            </div>
-            <div>
-              <label className="text-gray-400 text-sm block mb-1">
-                Exporter Institution ID
-              </label>
-              <input
-                type="text"
-                value={formData.exporterInstitutionId}
-                onChange={(e) =>
-                  setFormData((p) => ({
-                    ...p,
-                    exporterInstitutionId: e.target.value,
-                  }))
-                }
-                placeholder="e.g. FIRST-BANK-NG"
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-green-500"
-              />
-            </div>
-          </>
-        )}
-
-        {/* Step 2: Amount & FX */}
-        {step === 2 && (
-          <>
-            <h2 className="text-white font-semibold">Amount & FX Parameters</h2>
-            <div>
-              <label className="text-gray-400 text-sm block mb-1">
-                Deposit Amount (USDC)
-              </label>
-              <input
-                type="number"
-                value={formData.depositAmount}
-                onChange={(e) =>
-                  setFormData((p) => ({ ...p, depositAmount: e.target.value }))
-                }
-                placeholder="10000"
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-green-500"
-              />
-            </div>
-            <div>
-              <label className="text-gray-400 text-sm block mb-1">
-                Settlement Currency
-              </label>
-              <select
-                value={formData.settlementCurrency}
-                onChange={(e) =>
-                  setFormData((p) => ({
-                    ...p,
-                    settlementCurrency: e.target.value,
-                  }))
-                }
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-green-500"
-              >
-                {SETTLEMENT_CURRENCIES.map((c) => (
-                  <option key={c.value} value={c.value}>
-                    {c.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="text-gray-400 text-sm block mb-1">
-                FX Rate Band: ±{formData.fxRateBandBps} bps
-              </label>
-              <input
-                type="range"
-                min="25"
-                max="500"
-                step="25"
-                value={formData.fxRateBandBps}
-                onChange={(e) =>
-                  setFormData((p) => ({
-                    ...p,
-                    fxRateBandBps: Number(e.target.value),
-                  }))
-                }
-                className="w-full accent-green-500"
-              />
-            </div>
-            <div>
-              <label className="text-gray-400 text-sm block mb-1">
-                Expiry Date
-              </label>
-              <input
-                type="datetime-local"
-                value={formData.expiresAt}
-                onChange={(e) =>
-                  setFormData((p) => ({ ...p, expiresAt: e.target.value }))
-                }
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-green-500"
-              />
-            </div>
-          </>
-        )}
-
-        {/* Step 3: Conditions */}
-        {step === 3 && (
-          <>
-            <div className="flex items-center justify-between">
-              <h2 className="text-white font-semibold">Trade Conditions</h2>
-              <button
-                onClick={addCondition}
-                disabled={formData.conditions.length >= 10}
-                className="text-green-400 hover:text-green-300 text-sm disabled:opacity-50"
-              >
-                + Add Condition
-              </button>
-            </div>
-            {formData.conditions.map((cond, i) => (
+        <div className="panel-body">
+          <div style={{ display: "flex", gap: "3px", marginBottom: "20px" }}>
+            {stepProgress.map((complete, index) => (
               <div
-                key={i}
-                className="bg-gray-800 rounded-lg p-3 space-y-2"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-300 text-sm font-medium">
-                    Condition {i + 1}
-                  </span>
-                  {formData.conditions.length > 1 && (
+                key={index}
+                style={{
+                  flex: 1,
+                  height: "3px",
+                  borderRadius: "2px",
+                  background: complete ? "var(--accent)" : "var(--border)",
+                }}
+              />
+            ))}
+          </div>
+
+          <div className="form-section">
+            <div className="form-section-title">Step 1 - Counterparty</div>
+            {directoryQuery.isLoading ? (
+              <div className="soft-card">Loading onboarded institutions...</div>
+            ) : !directoryQuery.data?.institutions.length ? (
+              <div className="soft-card">
+                Another institution needs to complete onboarding before it can
+                be selected for settlement.
+              </div>
+            ) : (
+              <div className="route-card-list">
+                {directoryQuery.data.institutions.map((counterparty) => {
+                  const selected = counterparty.id === counterpartyInstitutionId;
+
+                  return (
                     <button
-                      onClick={() => removeCondition(i)}
-                      className="text-red-400 hover:text-red-300 text-xs"
+                      key={counterparty.id}
+                      type="button"
+                      onClick={() => setCounterpartyInstitutionId(counterparty.id)}
+                      className={`route-card ${selected ? "is-selected" : ""}`}
                     >
-                      Remove
+                      <div className="route-card-head">
+                        <div>
+                          <div className="route-card-title">{counterparty.name}</div>
+                          <div className="route-card-copy">
+                            {counterparty.jurisdiction} · wallet {counterparty.wallet.slice(0, 10)}...
+                          </div>
+                        </div>
+                        <span className={`badge ${selected ? "bg" : "bs"}`}>
+                          Tier {counterparty.kycTier}
+                        </span>
+                      </div>
                     </button>
-                  )}
-                </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          <div className="form-section">
+            <div className="form-section-title">Step 2 - Trade Terms</div>
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">Settlement Instrument</label>
                 <select
-                  value={cond.conditionType}
-                  onChange={(e) => {
-                    const updated = [...formData.conditions];
-                    updated[i] = { ...updated[i], conditionType: e.target.value };
-                    setFormData((p) => ({ ...p, conditions: updated }));
-                  }}
-                  className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-white text-xs focus:outline-none"
+                  className="form-select"
+                  value={settlementInstrument}
+                  onChange={(event) =>
+                    setSettlementInstrument(
+                      event.target.value as (typeof SUPPORTED_SETTLEMENT_INSTRUMENTS)[number]["code"]
+                    )
+                  }
                 >
-                  {CONDITION_TYPES.map((t) => (
-                    <option key={t.value} value={t.value}>
-                      {t.label}
+                  {SUPPORTED_SETTLEMENT_INSTRUMENTS.map((instrument) => (
+                    <option key={instrument.code} value={instrument.code}>
+                      {instrument.code} - {instrument.label}
                     </option>
                   ))}
                 </select>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Escrow Amount (USDC)</label>
                 <input
-                  type="text"
-                  placeholder="Description"
-                  value={cond.description}
-                  onChange={(e) => {
-                    const updated = [...formData.conditions];
-                    updated[i] = { ...updated[i], description: e.target.value };
-                    setFormData((p) => ({ ...p, conditions: updated }));
-                  }}
-                  className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-white text-xs focus:outline-none"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={depositAmountUsdc}
+                  onChange={(event) => setDepositAmountUsdc(event.target.value)}
+                  className="form-input"
+                  placeholder="500000"
                 />
-                {cond.conditionType === "DocumentHash" && (
-                  <input
-                    type="text"
-                    placeholder="Document hash (SHA-256 hex)"
-                    value={cond.documentHash}
-                    onChange={(e) => {
-                      const updated = [...formData.conditions];
-                      updated[i] = { ...updated[i], documentHash: e.target.value };
-                      setFormData((p) => ({ ...p, conditions: updated }));
-                    }}
-                    className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-white text-xs font-mono focus:outline-none"
-                  />
-                )}
-                <div>
-                  <label className="text-gray-500 text-xs">
-                    Release BPS: {cond.releaseBps} ({(cond.releaseBps / 100).toFixed(0)}%)
-                  </label>
-                  <input
-                    type="range"
-                    min="0"
-                    max="10000"
-                    step="100"
-                    value={cond.releaseBps}
-                    onChange={(e) => {
-                      const updated = [...formData.conditions];
-                      updated[i] = { ...updated[i], releaseBps: Number(e.target.value) };
-                      setFormData((p) => ({ ...p, conditions: updated }));
-                    }}
-                    className="w-full accent-green-500"
-                  />
+              </div>
+            </div>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">Expiry</label>
+                <input
+                  type="datetime-local"
+                  value={expiresAt}
+                  onChange={(event) => setExpiresAt(event.target.value)}
+                  className="form-input"
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label">FX Rate Band (bps)</label>
+                <input
+                  type="number"
+                  min="25"
+                  max="250"
+                  step="25"
+                  value={fxRateBandBps}
+                  onChange={(event) => setFxRateBandBps(Number(event.target.value))}
+                  className="form-input"
+                />
+              </div>
+            </div>
+
+            <div className="info-box" style={{ marginBottom: 0 }}>
+              <div className="info-box-title">
+                SIX BFI Live Rate · {selectedInstrument.valorBc}
+              </div>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  gap: "16px",
+                  flexWrap: "wrap",
+                }}
+              >
+                <div className="info-box-text">
+                  1 {selectedInstrument.code} corridor reference ={" "}
+                  {selectedRate ? selectedRate.rate.toFixed(4) : "Unavailable"}
+                </div>
+                <div className="verify-text">
+                  Exporter receives{" "}
+                  {selectedRate && depositAmountUsdc
+                    ? (selectedRate.rate * Number(depositAmountUsdc)).toLocaleString()
+                    : "--"}
                 </div>
               </div>
-            ))}
-          </>
-        )}
+            </div>
+          </div>
 
-        {/* Step 4: Travel Rule & Compliance */}
-        {step === 4 && (
-          <>
-            <h2 className="text-white font-semibold">Travel Rule & Compliance</h2>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-gray-400 text-xs block mb-1">
-                  Originator Name
-                </label>
-                <input
-                  type="text"
-                  value={formData.originatorName}
-                  onChange={(e) =>
-                    setFormData((p) => ({ ...p, originatorName: e.target.value }))
-                  }
-                  className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-white text-sm focus:outline-none focus:border-green-500"
-                />
+          <div className="form-section">
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                gap: "12px",
+                marginBottom: "12px",
+              }}
+            >
+              <div className="form-section-title" style={{ marginBottom: 0, flex: 1 }}>
+                Step 3 - Release Conditions
               </div>
-              <div>
-                <label className="text-gray-400 text-xs block mb-1">
-                  Originator Account
-                </label>
+              <button type="button" className="btn-outline" onClick={addCondition}>
+                <Plus size={14} />
+                Add condition
+              </button>
+            </div>
+
+            <div className="cond-list">
+              {conditions.map((condition, index) => {
+                const option = CONDITION_OPTIONS.find(
+                  (item) => item.value === condition.conditionType
+                );
+
+                return (
+                  <div key={index} className="soft-card">
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        gap: "12px",
+                        alignItems: "flex-start",
+                      }}
+                    >
+                      <div>
+                        <div className="route-card-title" style={{ fontSize: "16px" }}>
+                          Condition {index + 1}
+                        </div>
+                        <div className="route-card-copy">{option?.hint}</div>
+                      </div>
+                      <button
+                        type="button"
+                        className="nexus-icon-button"
+                        onClick={() => removeCondition(index)}
+                        disabled={conditions.length === 1}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+
+                    <div className="form-row" style={{ marginTop: "14px" }}>
+                      <div className="form-group">
+                        <label className="form-label">Condition Type</label>
+                        <select
+                          className="form-select"
+                          value={condition.conditionType}
+                          onChange={(event) =>
+                            handleConditionChange(index, {
+                              conditionType: event.target.value as TradeConditionType,
+                            })
+                          }
+                        >
+                          {CONDITION_OPTIONS.map((item) => (
+                            <option key={item.value} value={item.value}>
+                              {item.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">Release Bps</label>
+                        <input
+                          type="number"
+                          min="0"
+                          max="10000"
+                          step="100"
+                          className="form-input"
+                          value={condition.releaseBps}
+                          onChange={(event) =>
+                            handleConditionChange(index, {
+                              releaseBps: Number(event.target.value),
+                            })
+                          }
+                        />
+                      </div>
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label">Description</label>
+                      <input
+                        className="form-input"
+                        value={condition.description}
+                        onChange={(event) =>
+                          handleConditionChange(index, {
+                            description: event.target.value,
+                          })
+                        }
+                        placeholder="Bill of lading, inspection sign-off, treasury approval..."
+                      />
+                    </div>
+
+                    {condition.conditionType === "DocumentHash" ? (
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label className="form-label">Document Hash</label>
+                        <input
+                          className="form-input"
+                          value={condition.documentHash ?? ""}
+                          onChange={(event) =>
+                            handleConditionChange(index, {
+                              documentHash: event.target.value,
+                            })
+                          }
+                          placeholder="Optional proof hash for verification"
+                        />
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="form-section">
+            <div className="form-section-title">Step 4 - Compliance & Travel Rule</div>
+            <div className="form-group">
+              <label className="form-label">Source of Funds Hash (SHA-256)</label>
+              <input
+                className="form-input"
+                value={sourceOfFundsHash}
+                onChange={(event) => setSourceOfFundsHash(event.target.value)}
+                placeholder="64-character SHA-256 digest"
+              />
+            </div>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">Originator Name</label>
                 <input
-                  type="text"
-                  value={formData.originatorAccount}
-                  onChange={(e) =>
-                    setFormData((p) => ({
-                      ...p,
-                      originatorAccount: e.target.value,
+                  className="form-input"
+                  value={travelRule.originatorName}
+                  onChange={(event) =>
+                    setTravelRule((current) => ({
+                      ...current,
+                      originatorName: event.target.value,
                     }))
                   }
-                  className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-white text-sm focus:outline-none focus:border-green-500"
                 />
               </div>
-              <div>
-                <label className="text-gray-400 text-xs block mb-1">
-                  Beneficiary Name
-                </label>
+              <div className="form-group">
+                <label className="form-label">Originator Account</label>
                 <input
-                  type="text"
-                  value={formData.beneficiaryName}
-                  onChange={(e) =>
-                    setFormData((p) => ({ ...p, beneficiaryName: e.target.value }))
-                  }
-                  className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-white text-sm focus:outline-none focus:border-green-500"
-                />
-              </div>
-              <div>
-                <label className="text-gray-400 text-xs block mb-1">
-                  Beneficiary Account
-                </label>
-                <input
-                  type="text"
-                  value={formData.beneficiaryAccount}
-                  onChange={(e) =>
-                    setFormData((p) => ({
-                      ...p,
-                      beneficiaryAccount: e.target.value,
+                  className="form-input"
+                  value={travelRule.originatorAccount}
+                  onChange={(event) =>
+                    setTravelRule((current) => ({
+                      ...current,
+                      originatorAccount: event.target.value,
                     }))
                   }
-                  className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-white text-sm focus:outline-none focus:border-green-500"
                 />
               </div>
             </div>
-            <div>
-              <label className="text-gray-400 text-xs block mb-1">
-                Transaction Reference
-              </label>
-              <input
-                type="text"
-                value={formData.transactionReference}
-                onChange={(e) =>
-                  setFormData((p) => ({
-                    ...p,
-                    transactionReference: e.target.value,
-                  }))
-                }
-                placeholder="PO-2024-001 / LC-12345"
-                className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-white text-sm focus:outline-none focus:border-green-500"
-              />
-            </div>
-            <div>
-              <label className="text-gray-400 text-xs block mb-1">
-                Source of Funds Declaration
-              </label>
-              <textarea
-                value={formData.sourceOfFunds}
-                onChange={(e) =>
-                  setFormData((p) => ({ ...p, sourceOfFunds: e.target.value }))
-                }
-                rows={2}
-                placeholder="e.g. Export proceeds from manufactured goods"
-                className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-white text-sm focus:outline-none focus:border-green-500 resize-none"
-              />
-            </div>
-          </>
-        )}
 
-        {/* Step 5: Summary & Submit */}
-        {step === 5 && (
-          <>
-            <h2 className="text-white font-semibold">Review & Submit</h2>
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-gray-400">Exporter</span>
-                <span className="text-white font-mono text-xs">
-                  {formData.exporterWallet.slice(0, 16)}...
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-400">Amount</span>
-                <span className="text-white">
-                  {formData.depositAmount} USDC
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-400">Settlement Currency</span>
-                <span className="text-white">{formData.settlementCurrency}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-400">FX Rate Band</span>
-                <span className="text-white">±{formData.fxRateBandBps} bps</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-400">Conditions</span>
-                <span className="text-white">
-                  {formData.conditions.length}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-400">Travel Rule</span>
-                <span
-                  className={
-                    Number(formData.depositAmount) >= 1000
-                      ? "text-green-400"
-                      : "text-gray-400"
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">Beneficiary Name</label>
+                <input
+                  className="form-input"
+                  value={travelRule.beneficiaryName}
+                  onChange={(event) =>
+                    setTravelRule((current) => ({
+                      ...current,
+                      beneficiaryName: event.target.value,
+                    }))
                   }
-                >
-                  {Number(formData.depositAmount) >= 1000
-                    ? "Required ✓"
-                    : "Not required"}
-                </span>
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Beneficiary Account</label>
+                <input
+                  className="form-input"
+                  value={travelRule.beneficiaryAccount}
+                  onChange={(event) =>
+                    setTravelRule((current) => ({
+                      ...current,
+                      beneficiaryAccount: event.target.value,
+                    }))
+                  }
+                />
               </div>
             </div>
 
-            <div className="flex items-center gap-2 mt-2">
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label className="form-label">Transaction Reference</label>
               <input
-                type="checkbox"
-                id="useFireblocks"
-                checked={formData.useFireblocks}
-                onChange={(e) =>
-                  setFormData((p) => ({
-                    ...p,
-                    useFireblocks: e.target.checked,
+                className="form-input"
+                value={travelRule.transactionReference}
+                onChange={(event) =>
+                  setTravelRule((current) => ({
+                    ...current,
+                    transactionReference: event.target.value,
                   }))
                 }
-                className="accent-green-500"
+                placeholder="Invoice, letter of credit, or payment reference"
               />
-              <label htmlFor="useFireblocks" className="text-gray-300 text-sm">
-                Use Fireblocks MPC signing
-              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+        <div className="panel">
+          <div className="panel-header">
+            <div className="panel-title">Execution Brief</div>
+          </div>
+          <div className="panel-body">
+            <div className="detail-box">
+              <div className="detail-box-label">{selectedInstrument.pairLabel}</div>
+              <div className="detail-box-val">
+                {selectedRate ? selectedRate.rate.toFixed(4) : "Unavailable"}
+              </div>
+              <div className="detail-box-sub">
+                Bid {selectedRate?.bid.toFixed(4) ?? "--"} · Ask{" "}
+                {selectedRate?.ask.toFixed(4) ?? "--"}
+              </div>
             </div>
 
-            {error && (
-              <p className="text-red-400 text-sm bg-red-900/20 px-3 py-2 rounded-lg">
-                {error}
-              </p>
-            )}
-          </>
-        )}
+            <div className="summary-stack" style={{ marginTop: "14px", gap: "10px" }}>
+              <div className="comp-row">
+                <span className="comp-row-label">Counterparty</span>
+                <span className="badge bs">
+                  {selectedCounterparty?.name ?? "Select institution"}
+                </span>
+              </div>
+              <div className="comp-row">
+                <span className="comp-row-label">Deposit Notional</span>
+                <span className="badge bs">
+                  {depositAmountUsdc ? `${depositAmountUsdc} USDC` : "Pending"}
+                </span>
+              </div>
+              <div className="comp-row">
+                <span className="comp-row-label">Travel Rule Ref</span>
+                <span className="badge bs">
+                  {travelRule.transactionReference || "Pending"}
+                </span>
+              </div>
+              <div className="comp-row">
+                <span className="comp-row-label">Wallet</span>
+                <span className={`badge ${primaryWallet?.address ? "bg" : "ba"}`}>
+                  {primaryWallet?.address ? "READY" : "REQUIRED"}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
 
-        {/* Navigation */}
-        <div className="flex justify-between pt-4 border-t border-gray-800">
-          <button
-            onClick={() => setStep((s) => Math.max(1, s - 1))}
-            disabled={step === 1}
-            className="px-4 py-2 text-gray-400 hover:text-white disabled:opacity-0 text-sm"
-          >
-            ← Back
-          </button>
-          {step < totalSteps ? (
+        <div className="panel">
+          <div className="panel-header">
+            <div className="panel-title">Step 5 - Risk Assessment & Submit</div>
+          </div>
+          <div className="panel-body">
+            <div className="risk-grid">
+              <div className="risk-card">
+                <div className="risk-card-label">Counterparty</div>
+                <div className="risk-card-val green">
+                  {selectedCounterparty ? "READY" : "PENDING"}
+                </div>
+              </div>
+              <div className="risk-card">
+                <div className="risk-card-label">Rate Reference</div>
+                <div className="risk-card-val blue">
+                  {selectedRate ? "LIVE" : "WAIT"}
+                </div>
+              </div>
+              <div className="risk-card">
+                <div className="risk-card-label">Conditions</div>
+                <div className="risk-card-val">
+                  {conditions.length}
+                </div>
+              </div>
+              <div className="risk-card">
+                <div className="risk-card-label">Submission</div>
+                <div className="risk-card-val green">{canSubmit ? "READY" : "BLOCKED"}</div>
+              </div>
+            </div>
+
+            {error ? (
+              <div className="warning-box" style={{ marginTop: "12px" }}>
+                <div className="warning-box-text">{error}</div>
+              </div>
+            ) : null}
+
+            {walletProgress ? (
+              <div className="info-box" style={{ marginTop: "12px" }}>
+                <div className="info-box-title">Wallet Confirmation</div>
+                <div className="info-box-text">{walletProgress.label}</div>
+                {confirmedSignatures.length ? (
+                  <div style={{ display: "grid", gap: "8px", marginTop: "12px" }}>
+                    {confirmedSignatures.map((item) => (
+                      <a
+                        key={item.signature}
+                        href={explorerUrl(item.signature)}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="btn-outline"
+                        style={{ justifyContent: "center" }}
+                      >
+                        {item.label}
+                      </a>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+
             <button
-              onClick={() => setStep((s) => Math.min(totalSteps, s + 1))}
-              className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg text-sm font-medium transition-colors"
+              type="button"
+              onClick={submitTrade}
+              disabled={!canSubmit || submitting}
+              className="settle-btn"
+              style={{ width: "100%", marginTop: "12px" }}
             >
-              Next →
+              {submitting
+                ? walletProgress?.label ?? "Creating instruction..."
+                : "Create Escrow On-Chain"}
             </button>
-          ) : (
-            <button
-              onClick={submitEscrow}
-              disabled={submitting}
-              className="bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white px-6 py-2 rounded-lg text-sm font-medium transition-colors"
-            >
-              {submitting ? "Creating Escrow..." : "Create Escrow"}
-            </button>
-          )}
+          </div>
         </div>
       </div>
     </div>

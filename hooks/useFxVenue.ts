@@ -8,7 +8,9 @@ export interface FxRateData {
   ask: number;
   change24h: number;
   timestamp: number;
-  source: "SIX_BFI";
+  source: "SIX_BFI" | "FREE_FALLBACK";
+  rateSource?: "STREAM" | "REST" | "FALLBACK" | "CACHE";
+  provider?: "SIX_BFI_STREAM" | "SIX_BFI_REST" | "CONVERTZ" | "UNAVAILABLE";
   error?: boolean;
 }
 

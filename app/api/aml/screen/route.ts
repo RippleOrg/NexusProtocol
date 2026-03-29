@@ -24,22 +24,32 @@ export async function POST(req: NextRequest) {
 
     const result = await chainalysisClient.screenAddress(wallet);
 
-    // Store result in DB
+    // Store result in DB when the institution can be resolved safely
     try {
       const { PrismaClient } = await import("@prisma/client");
       const prisma = new PrismaClient();
-      await prisma.amlScreening.create({
-        data: {
-          wallet,
-          institutionId: institutionId ?? "unknown",
-          riskScore: result.riskScore,
-          isSanctioned: result.isSanctioned,
-          riskCategories: result.riskCategories,
-          recommendation: result.recommendation,
-          provider: result.provider,
-          screenedAt: new Date(result.screenedAt),
-        },
-      });
+      const institution = institutionId
+        ? await prisma.institution.findFirst({
+            where: {
+              OR: [{ id: institutionId }, { name: institutionId }],
+            },
+          })
+        : null;
+
+      if (institution) {
+        await prisma.amlScreening.create({
+          data: {
+            wallet,
+            institutionId: institution.id,
+            riskScore: result.riskScore,
+            isSanctioned: result.isSanctioned,
+            riskCategories: result.riskCategories,
+            recommendation: result.recommendation,
+            provider: result.provider,
+            screenedAt: new Date(result.screenedAt),
+          },
+        });
+      }
       await prisma.$disconnect();
     } catch {
       // DB unavailable

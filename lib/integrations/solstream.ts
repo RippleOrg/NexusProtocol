@@ -12,7 +12,7 @@ export interface SolstreamConfig {
 function buildConfig(): SolstreamConfig {
   const programId =
     process.env.NEXT_PUBLIC_NEXUS_PROGRAM_ID ??
-    "NXSvFssBwGNZPpPSS5tcMqQLYbFf8yRKXBiARUdGi7Mb";
+    "3GapkzNSKXUgtjLXh4wSuWQBA13EwQSzTRNiDwcpFBp7";
   const endpoint =
     process.env.SOLSTREAM_ENDPOINT ??
     `wss://stream.solstice.sh/v1/${programId}`;
@@ -192,6 +192,8 @@ export class SolstreamClient extends EventEmitter {
   private reconnectAttempts = 0;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private isDestroyed = false;
+  private lastErrorMsg: string | null = null;
+  private lastErrorTime: number = 0;
 
   // In-memory ring buffer of recent compliance events
   private recentEvents: NexusComplianceEvent[] = [];
@@ -247,14 +249,25 @@ export class SolstreamClient extends EventEmitter {
       }
     });
 
+
     this.ws.on("error", (err) => {
-      console.error("[Solstream] WebSocket error:", err.message);
+      const now = Date.now();
+      const msg = `[Solstream] WebSocket error: ${err.message}`;
+      if (msg !== this.lastErrorMsg || now - this.lastErrorTime > 60000) {
+        console.error(msg);
+        this.lastErrorMsg = msg;
+        this.lastErrorTime = now;
+      }
     });
 
     this.ws.on("close", (code, reason) => {
-      console.warn(
-        `[Solstream] Connection closed (code=${code}, reason=${reason.toString()})`
-      );
+      const now = Date.now();
+      const msg = `[Solstream] Connection closed (code=${code}, reason=${reason.toString()})`;
+      if (msg !== this.lastErrorMsg || now - this.lastErrorTime > 60000) {
+        console.warn(msg);
+        this.lastErrorMsg = msg;
+        this.lastErrorTime = now;
+      }
       if (!this.isDestroyed) {
         this.scheduleReconnect();
       }

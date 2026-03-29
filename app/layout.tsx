@@ -1,13 +1,35 @@
-import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import type { Metadata, Viewport } from "next";
+import localFont from "next/font/local";
+import "@solana/wallet-adapter-react-ui/styles.css";
 import "./globals.css";
+import AppProviders from "@/app/providers";
+import RootShell from "@/components/app/root-shell";
 
-const inter = Inter({ subsets: ["latin"] });
+const plexSans = localFont({
+  src: "./fonts/SFNS.ttf",
+  variable: "--font-sans",
+  display: "swap",
+});
+
+const plexMono = localFont({
+  src: "./fonts/SFNSMono.ttf",
+  variable: "--font-plex-mono",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "NEXUS Protocol",
   description:
-    "Compliance-native programmable trade settlement and institutional FX venue on Solana",
+    "Programmable trade settlement and institutional FX with compliance enforced at the protocol layer.",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  themeColor: [
+    { media: "(prefers-color-scheme: dark)", color: "#091423" },
+    { media: "(prefers-color-scheme: light)", color: "#f3f5f8" },
+  ],
 };
 
 export default function RootLayout({
@@ -16,9 +38,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="dark">
-      <body className={`${inter.className} bg-gray-950 text-gray-100 min-h-screen`}>
-        {children}
+    <html lang="en" suppressHydrationWarning>
+      <body
+        className={`${plexSans.variable} ${plexMono.variable} nexus-app-body min-h-screen antialiased`}
+      >
+        <AppProviders>
+          <RootShell>{children}</RootShell>
+        </AppProviders>
       </body>
     </html>
   );

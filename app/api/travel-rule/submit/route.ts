@@ -37,25 +37,46 @@ export async function POST(req: NextRequest) {
 
     const payload = parsed.data;
 
-    // Store in database
+    // Store in database when both institutions can be resolved
     try {
       const { PrismaClient } = await import("@prisma/client");
       const prisma = new PrismaClient();
-      await prisma.travelRuleLog.create({
-        data: {
-          onChainLogPda: payload.recordId,
-          escrowId: payload.escrowId ?? payload.transactionReference,
-          originatorInstitutionId: payload.originator.institutionId,
-          originatorName: payload.originator.name,
-          originatorAccount: payload.originator.accountNumber,
-          beneficiaryInstitutionId: payload.beneficiary.institutionId,
-          beneficiaryName: payload.beneficiary.name,
-          beneficiaryAccount: payload.beneficiary.accountNumber,
-          transferAmount: BigInt(Math.round(payload.amount * 1_000_000)),
-          currency: payload.currency,
-          createdAt: new Date(payload.submittedAt),
-        },
-      });
+      const [originatorInstitution, beneficiaryInstitution] = await Promise.all([
+        prisma.institution.findFirst({
+          where: {
+            OR: [
+              { id: payload.originator.institutionId },
+              { name: payload.originator.institutionId },
+            ],
+          },
+        }),
+        prisma.institution.findFirst({
+          where: {
+            OR: [
+              { id: payload.beneficiary.institutionId },
+              { name: payload.beneficiary.institutionId },
+            ],
+          },
+        }),
+      ]);
+
+      if (originatorInstitution && beneficiaryInstitution) {
+        await prisma.travelRuleLog.create({
+          data: {
+            onChainLogPda: payload.recordId,
+            escrowId: payload.escrowId ?? payload.transactionReference,
+            originatorInstitutionId: originatorInstitution.id,
+            originatorName: payload.originator.name,
+            originatorAccount: payload.originator.accountNumber,
+            beneficiaryInstitutionId: beneficiaryInstitution.id,
+            beneficiaryName: payload.beneficiary.name,
+            beneficiaryAccount: payload.beneficiary.accountNumber,
+            transferAmount: BigInt(Math.round(payload.amount * 1_000_000)),
+            currency: payload.currency,
+            createdAt: new Date(payload.submittedAt),
+          },
+        });
+      }
       await prisma.$disconnect();
     } catch {
       // DB unavailable; continue with success response

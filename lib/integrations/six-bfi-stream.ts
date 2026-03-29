@@ -43,6 +43,9 @@ const VALOR_BC_LABELS: Record<string, string> = {
 };
 
 export class SixBfiStreamClient extends EventEmitter {
+  // Error suppression state
+  private lastErrorMsg: string | null = null;
+  private lastErrorTime: number = 0;
   // VALOR_BC subscriptions for NEXUS (BC=148)
   private readonly NEXUS_SUBSCRIPTIONS = [
     "199113_148", // USD/NGN
@@ -113,14 +116,25 @@ export class SixBfiStreamClient extends EventEmitter {
       }
     });
 
+
     this.ws.on("error", (err) => {
-      console.error("[SixBfiStream] WebSocket error:", err.message);
+      const now = Date.now();
+      const msg = `[SixBfiStream] WebSocket error: ${err.message}`;
+      if (msg !== this.lastErrorMsg || now - this.lastErrorTime > 60000) {
+        console.error(msg);
+        this.lastErrorMsg = msg;
+        this.lastErrorTime = now;
+      }
     });
 
     this.ws.on("close", (code, reason) => {
-      console.warn(
-        `[SixBfiStream] Connection closed (code=${code}, reason=${reason.toString()})`
-      );
+      const now = Date.now();
+      const msg = `[SixBfiStream] Connection closed (code=${code}, reason=${reason.toString()})`;
+      if (msg !== this.lastErrorMsg || now - this.lastErrorTime > 60000) {
+        console.warn(msg);
+        this.lastErrorMsg = msg;
+        this.lastErrorTime = now;
+      }
       if (!this.isDestroyed) {
         this.scheduleReconnect();
       }

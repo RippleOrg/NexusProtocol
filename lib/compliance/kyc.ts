@@ -15,6 +15,8 @@ export interface KycVerificationResult {
   kycRecordPda?: string;
   tier: number;
   message: string;
+  faucetRequired?: boolean;
+  faucetUrl?: string | null;
 }
 
 export class KycEngine {
@@ -46,12 +48,17 @@ export class KycEngine {
         success: boolean;
         kycRecordPda: string;
         tier: number;
+        message?: string;
+        faucetRequired?: boolean;
+        faucetUrl?: string | null;
       };
       return {
         success: data.success,
         kycRecordPda: data.kycRecordPda,
         tier: data.tier,
-        message: "KYC verification successful",
+        message: data.message ?? "KYC verification successful",
+        faucetRequired: data.faucetRequired,
+        faucetUrl: data.faucetUrl,
       };
     } catch (err) {
       return {

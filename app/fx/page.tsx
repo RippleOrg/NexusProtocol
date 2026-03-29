@@ -1,182 +1,221 @@
 "use client";
 
-import { useEffect, useState } from "react";
-
-interface FxRate {
-  pair: string;
-  label: string;
-  rate: number;
-  bid: number;
-  ask: number;
-  change24h: number;
-}
-
-const PAIRS = [
-  { value: "USDNGN", label: "USDC / NGNC" },
-  { value: "EURUSD", label: "USDC / EURC" },
-  { value: "USDKES", label: "USDC / KESC" },
-  { value: "GBPUSD", label: "USDC / GBPC" },
-];
+import Link from "next/link";
+import { useMemo, useState } from "react";
+import { useFxRates } from "@/hooks/useFxVenue";
+import {
+  COLLATERAL_INSTRUMENTS,
+  SUPPORTED_SETTLEMENT_INSTRUMENTS,
+} from "@/lib/nexus/constants";
 
 export default function FxPage() {
-  const [selectedPair, setSelectedPair] = useState("USDNGN");
-  const [rates, setRates] = useState<FxRate[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [selectedInstrument, setSelectedInstrument] = useState<
+    (typeof SUPPORTED_SETTLEMENT_INSTRUMENTS)[number]["code"]
+  >(SUPPORTED_SETTLEMENT_INSTRUMENTS[0].code);
+  const ratesQuery = useFxRates();
 
-  useEffect(() => {
-    const fetch_ = async () => {
-      try {
-        const res = await fetch("/api/rates");
-        const data = (await res.json()) as { rates: FxRate[] };
-        setRates(data.rates ?? []);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetch_();
-    const id = setInterval(fetch_, 10_000);
-    return () => clearInterval(id);
-  }, []);
+  const currentInstrument = useMemo(
+    () =>
+      SUPPORTED_SETTLEMENT_INSTRUMENTS.find(
+        (instrument) => instrument.code === selectedInstrument
+      ) ?? SUPPORTED_SETTLEMENT_INSTRUMENTS[0],
+    [selectedInstrument]
+  );
 
-  const selectedRate = rates.find((r) => r.pair === selectedPair);
+  const selectedRate = useMemo(
+    () =>
+      ratesQuery.data?.find((rate) => rate.pair === currentInstrument.pair),
+    [currentInstrument.pair, ratesQuery.data]
+  );
 
   return (
-    <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-white">FX Venue</h1>
-        <p className="text-gray-400 text-sm">
-          Institutional RFQ orderbook and AMM liquidity
-        </p>
-      </div>
-
-      {/* Pair selector */}
-      <div className="flex gap-2 flex-wrap">
-        {PAIRS.map((p) => (
-          <button
-            key={p.value}
-            onClick={() => setSelectedPair(p.value)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              selectedPair === p.value
-                ? "bg-green-600 text-white"
-                : "bg-gray-800 text-gray-400 hover:bg-gray-700"
-            }`}
+    <div className="two-col">
+      <div className="panel">
+        <div className="panel-header">
+          <div className="panel-title">Reference Corridor</div>
+          <select
+            className="form-select"
+            style={{ width: "auto", padding: "4px 10px", fontSize: "11px" }}
+            value={selectedInstrument}
+            onChange={(event) =>
+              setSelectedInstrument(
+                event.target.value as (typeof SUPPORTED_SETTLEMENT_INSTRUMENTS)[number]["code"]
+              )
+            }
           >
-            {p.label}
-          </button>
-        ))}
+            {SUPPORTED_SETTLEMENT_INSTRUMENTS.map((instrument) => (
+              <option key={instrument.code} value={instrument.code}>
+                {instrument.pairLabel}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="ob-mid">
+          <div
+            style={{
+              fontFamily: "var(--mono)",
+              fontSize: "9px",
+              color: "var(--ink4)",
+              marginBottom: "2px",
+            }}
+          >
+            {(selectedRate?.source === "FREE_FALLBACK"
+              ? "SIX BFI"
+              : "SIX BFI MID")}{" "}
+            · {currentInstrument.valorBc}
+          </div>
+          <div className="ob-mid-rate">
+            {selectedRate ? selectedRate.rate.toFixed(4) : "Unavailable"}
+          </div>
+          <div className="ob-mid-lbl">
+            {(selectedRate?.change24h ?? 0) >= 0 ? "+" : ""}
+            {selectedRate?.change24h.toFixed(2) ?? "0.00"}% · Corridor {currentInstrument.code}
+          </div>
+        </div>
+
+        <div className="panel-body">
+          <div className="detail-grid" style={{ marginBottom: "14px" }}>
+            <div className="detail-box">
+              <div className="detail-box-label">Bid</div>
+              <div className="detail-box-val" style={{ color: "var(--green-600)" }}>
+                {selectedRate?.bid.toFixed(4) ?? "--"}
+              </div>
+              <div className="detail-box-sub">Protected lower bound</div>
+            </div>
+            <div className="detail-box">
+              <div className="detail-box-label">Ask</div>
+              <div className="detail-box-val" style={{ color: "var(--red-600)" }}>
+                {selectedRate?.ask.toFixed(4) ?? "--"}
+              </div>
+              <div className="detail-box-sub">Protected upper bound</div>
+            </div>
+            <div className="detail-box">
+              <div className="detail-box-label">Spread</div>
+              <div className="detail-box-val">
+                {selectedRate ? (selectedRate.ask - selectedRate.bid).toFixed(4) : "--"}
+              </div>
+              <div className="detail-box-sub">Reference spread</div>
+            </div>
+            <div className="detail-box">
+              <div className="detail-box-label">Pair</div>
+              <div className="detail-box-val" style={{ color: "var(--accent)" }}>
+                {currentInstrument.code}
+              </div>
+              <div className="detail-box-sub">{currentInstrument.pair}</div>
+            </div>
+          </div>
+
+          <div className="route-card-list">
+            {SUPPORTED_SETTLEMENT_INSTRUMENTS.map((instrument) => {
+              const active = instrument.code === currentInstrument.code;
+              const rate = ratesQuery.data?.find((item) => item.pair === instrument.pair);
+
+              return (
+                <button
+                  key={instrument.code}
+                  type="button"
+                  onClick={() => setSelectedInstrument(instrument.code)}
+                  className={`route-card ${active ? "is-selected" : ""}`}
+                >
+                  <div className="route-card-head">
+                    <div>
+                      <div className="route-card-title">{instrument.code}</div>
+                      <div className="route-card-copy">{instrument.label}</div>
+                    </div>
+                    <span className={`badge ${active ? "bg" : "bs"}`}>
+                      {rate && !rate.error ? rate.rate.toFixed(4) : "N/A"}
+                    </span>
+                  </div>
+                  <div className="route-card-copy">
+                    {instrument.pairLabel} · VALOR_BC {instrument.valorBc}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
+          <div style={{ marginTop: "14px" }}>
+            <Link
+              href={`/trades/new?instrument=${currentInstrument.code}`}
+              className="btn-primary"
+            >
+              Use this corridor in a new trade
+            </Link>
+          </div>
+        </div>
       </div>
 
-      {/* Rate display */}
-      {selectedRate && (
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-white font-semibold text-lg">
-              {selectedRate.label ?? selectedRate.pair}
-            </h2>
-            <span className="text-gray-400 text-xs">SIX BFI Reference</span>
+      <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+        <div className="panel">
+          <div className="panel-header">
+            <div className="panel-title">Best Execution</div>
           </div>
-          <div className="grid grid-cols-3 gap-6">
-            <div>
-              <p className="text-gray-500 text-xs mb-1">Bid</p>
-              <p className="text-red-400 font-mono text-2xl font-bold">
-                {selectedRate.bid.toFixed(4)}
-              </p>
-            </div>
-            <div className="text-center">
-              <p className="text-gray-500 text-xs mb-1">Mid</p>
-              <p className="text-white font-mono text-2xl font-bold">
-                {selectedRate.rate.toFixed(4)}
-              </p>
-              <p
-                className={`text-sm mt-1 ${
-                  selectedRate.change24h >= 0
-                    ? "text-green-400"
-                    : "text-red-400"
-                }`}
-              >
-                {selectedRate.change24h >= 0 ? "+" : ""}
-                {selectedRate.change24h.toFixed(2)}%
-              </p>
-            </div>
-            <div className="text-right">
-              <p className="text-gray-500 text-xs mb-1">Ask</p>
-              <p className="text-green-400 font-mono text-2xl font-bold">
-                {selectedRate.ask.toFixed(4)}
-              </p>
+          <div className="panel-body">
+            <div className="comp-list">
+              <div className="comp-row">
+                <span className="comp-row-label">Reference mid</span>
+                <span className="badge bg">
+                  {selectedRate ? selectedRate.rate.toFixed(4) : "Pending"}
+                </span>
+              </div>
+              <div className="comp-row">
+                <span className="comp-row-label">Protected bid</span>
+                <span className="badge bg">
+                  {selectedRate ? selectedRate.bid.toFixed(4) : "Pending"}
+                </span>
+              </div>
+              <div className="comp-row">
+                <span className="comp-row-label">Protected ask</span>
+                <span className="badge bg">
+                  {selectedRate ? selectedRate.ask.toFixed(4) : "Pending"}
+                </span>
+              </div>
+              <div className="comp-row">
+                <span className="comp-row-label">Rate band guardrail</span>
+                <span className="badge ba">APP ENFORCED</span>
+              </div>
+              <div className="comp-row">
+                <span className="comp-row-label">Provider</span>
+                <span className="badge bs">
+                  {selectedRate?.provider === "CONVERTZ"
+                    ? "CONVERTZ"
+                    : selectedRate?.provider === "SIX_BFI_STREAM"
+                      ? "SIX STREAM"
+                      : selectedRate?.provider === "SIX_BFI_REST"
+                        ? "SIX REST"
+                        : "PENDING"}
+                </span>
+              </div>
             </div>
           </div>
         </div>
-      )}
 
-      {/* Orderbook Panel placeholder */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
-          <h3 className="text-white font-semibold mb-3">Order Book</h3>
-          <div className="space-y-1">
-            <div className="flex justify-between text-xs text-gray-500 pb-2 border-b border-gray-800">
-              <span>Rate</span>
-              <span>Size</span>
-              <span>Institution</span>
+        <div className="panel">
+          <div className="panel-header">
+            <div className="panel-title">Collateral Rails</div>
+          </div>
+          <div className="panel-body">
+            <div className="comp-list">
+              {COLLATERAL_INSTRUMENTS.map((instrument) => (
+                <div key={instrument.code} className="comp-row">
+                  <span className="comp-row-label">{instrument.label}</span>
+                  <span className="badge bs">{instrument.valorBc}</span>
+                </div>
+              ))}
             </div>
-            {/* Ask side */}
-            {[1.3455, 1.3450, 1.3445].map((r) => (
-              <div
-                key={r}
-                className="flex justify-between text-xs py-1 text-green-400"
-              >
-                <span className="font-mono">{r.toFixed(4)}</span>
-                <span className="font-mono text-gray-300">
-                  {(Math.random() * 100000).toFixed(0)}
-                </span>
-                <span className="text-gray-500">INST-XXX</span>
-              </div>
-            ))}
-            <div className="border-t border-dashed border-gray-700 my-1" />
-            {/* Bid side */}
-            {[1.3440, 1.3435, 1.3430].map((r) => (
-              <div
-                key={r}
-                className="flex justify-between text-xs py-1 text-red-400"
-              >
-                <span className="font-mono">{r.toFixed(4)}</span>
-                <span className="font-mono text-gray-300">
-                  {(Math.random() * 100000).toFixed(0)}
-                </span>
-                <span className="text-gray-500">INST-YYY</span>
-              </div>
-            ))}
           </div>
         </div>
 
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
-          <h3 className="text-white font-semibold mb-3">Post RFQ Quote</h3>
-          <div className="space-y-3">
-            <div>
-              <label className="text-gray-400 text-xs">Rate</label>
-              <input
-                type="number"
-                placeholder="1.3445"
-                className="w-full mt-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-green-500"
-              />
+        <div className="panel">
+          <div className="panel-header">
+            <div className="panel-title">Venue Notes</div>
+          </div>
+          <div className="panel-body">
+            <div style={{ fontSize: "13px", lineHeight: "1.7", color: "var(--ink3)" }}>
+              The FX workspace records the reference source shown here at trade
+              creation time. SIX BFI remains the preferred source.
             </div>
-            <div>
-              <label className="text-gray-400 text-xs">Amount (base)</label>
-              <input
-                type="number"
-                placeholder="10000"
-                className="w-full mt-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-green-500"
-              />
-            </div>
-            <div>
-              <label className="text-gray-400 text-xs">Side</label>
-              <select className="w-full mt-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-green-500">
-                <option value="bid">Bid</option>
-                <option value="ask">Ask</option>
-              </select>
-            </div>
-            <button className="w-full bg-green-600 hover:bg-green-700 text-white rounded-lg px-4 py-2 text-sm font-medium transition-colors">
-              Post Quote (KYC Tier 3 Required)
-            </button>
           </div>
         </div>
       </div>

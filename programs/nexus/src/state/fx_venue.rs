@@ -45,7 +45,7 @@ impl FxVenue {
         (diff as u128)
             .saturating_mul(10_000)
             .checked_div(self.six_bfi_rate.unsigned_abs() as u128)
-            .unwrap_or(u64::MAX) as u64
+            .unwrap_or(u64::MAX as u128) as u64
     }
 }
 

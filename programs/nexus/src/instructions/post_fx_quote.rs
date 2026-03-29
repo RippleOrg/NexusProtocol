@@ -11,7 +11,7 @@ use crate::{
 use anchor_lang::prelude::*;
 
 #[derive(Accounts)]
-#[instruction(params: QuoteParams)]
+#[instruction(params: QuoteParams, market_maker_institution_id: String)]
 pub struct PostFxQuote<'info> {
     #[account(
         seeds = [b"protocol-config"],

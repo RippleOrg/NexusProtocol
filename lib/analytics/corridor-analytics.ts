@@ -1,7 +1,10 @@
 import crypto from "crypto";
 import type { PrismaClient as PrismaClientType } from "@prisma/client";
+import { getFallbackRateByPair } from "@/lib/integrations/free-market-data";
 import { getStreamClient } from "@/lib/integrations/six-bfi-stream";
 import { sixBfiClient } from "@/lib/integrations/six-bfi";
+import { deriveProtocolConfigPda } from "@/lib/nexus/onchain";
+import { withSolanaReadFallback } from "@/lib/server/solana-rpc";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -20,7 +23,7 @@ const MS_PER_DAY = 24 * 60 * 60 * 1_000;
 /** Nexus program ID (matches NEXT_PUBLIC_NEXUS_PROGRAM_ID env var). */
 const NEXUS_PROGRAM_ID =
   process.env.NEXT_PUBLIC_NEXUS_PROGRAM_ID ??
-  "NXSvFssBwGNZPpPSS5tcMqQLYbFf8yRKXBiARUdGi7Mb";
+  "3GapkzNSKXUgtjLXh4wSuWQBA13EwQSzTRNiDwcpFBp7";
 
 // ─── Interfaces ───────────────────────────────────────────────────────────────
 
@@ -353,6 +356,13 @@ export class CorridorAnalyticsEngine {
       // REST also unavailable
     }
 
+    try {
+      const fallbackRate = await getFallbackRateByPair({ valorBc, pair });
+      return { rate: fallbackRate.rate, change24h: fallbackRate.change24h };
+    } catch {
+      // fallback source unavailable
+    }
+
     return { rate: 0, change24h: 0 };
   }
 
@@ -362,27 +372,23 @@ export class CorridorAnalyticsEngine {
    */
   private async fetchOnChainEscrows(): Promise<ParsedEscrow[] | null> {
     try {
-      const { Connection, PublicKey } = await import("@solana/web3.js");
-      const { utils } = await import("@coral-xyz/anchor");
+      const { PublicKey } = await import("@solana/web3.js");
+      const bs58 = (await import("bs58")).default;
 
-      const rpcUrl =
-        process.env.NEXT_PUBLIC_SOLANA_RPC_URL ??
-        "https://api.devnet.solana.com";
       const programId = new PublicKey(NEXUS_PROGRAM_ID);
-      const connection = new Connection(rpcUrl, "confirmed");
-
       const discriminator = anchorDiscriminator("EscrowAccount");
-
-      const accounts = await connection.getProgramAccounts(programId, {
-        filters: [
-          {
-            memcmp: {
-              offset: 0,
-              bytes: utils.bytes.bs58.encode(discriminator),
+      const { value: accounts } = await withSolanaReadFallback((connection) =>
+        connection.getProgramAccounts(programId, {
+          filters: [
+            {
+              memcmp: {
+                offset: 0,
+                bytes: bs58.encode(discriminator),
+              },
             },
-          },
-        ],
-      });
+          ],
+        })
+      );
 
       const parsed: ParsedEscrow[] = [];
       for (const acc of accounts) {
@@ -401,20 +407,11 @@ export class CorridorAnalyticsEngine {
    */
   private async fetchProtocolFeeBps(): Promise<number> {
     try {
-      const { Connection, PublicKey } = await import("@solana/web3.js");
-
-      const rpcUrl =
-        process.env.NEXT_PUBLIC_SOLANA_RPC_URL ??
-        "https://api.devnet.solana.com";
-      const programId = new PublicKey(NEXUS_PROGRAM_ID);
-      const connection = new Connection(rpcUrl, "confirmed");
-
-      const [configPda] = PublicKey.findProgramAddressSync(
-        [Buffer.from("config")],
-        programId
+      const { PublicKey } = await import("@solana/web3.js");
+      const configPda = new PublicKey(deriveProtocolConfigPda());
+      const { value: accountInfo } = await withSolanaReadFallback((connection) =>
+        connection.getAccountInfo(configPda)
       );
-
-      const accountInfo = await connection.getAccountInfo(configPda);
       if (!accountInfo) return DEFAULT_NEXUS_FEE_BPS;
 
       const feeBps = parseProtocolConfigFeeBps(accountInfo.data as Buffer);

@@ -12,7 +12,7 @@ use anchor_lang::prelude::*;
 const PRICE_STALE_SECONDS: i64 = 300; // 5-minute price staleness limit
 
 #[derive(Accounts)]
-#[instruction(escrow_id: String)]
+#[instruction(escrow_id: String, current_price: i64, price_timestamp: i64, admin_institution_id: String)]
 pub struct CheckCollateralHealth<'info> {
     #[account(
         seeds = [b"protocol-config"],

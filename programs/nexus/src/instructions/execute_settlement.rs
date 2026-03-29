@@ -4,13 +4,13 @@ use crate::{
     state::{
         compliance::{KycRecord, TravelRuleLog},
         config::ProtocolConfig,
-        escrow::{EscrowAccount, EscrowStatus, FxExecutionMode, FxExecutionParams},
-        fx_venue::{FxVenue, RfqQuote},
+        escrow::{EscrowAccount, EscrowStatus, FxExecutionParams},
+        fx_venue::FxVenue,
     },
     utils::{
         compliance::{validate_aml_risk, validate_fx_rate},
-        fx::{compute_amm_output, compute_amm_rate, validate_quote, validate_slippage},
-        math::{compute_fee, compute_settlement_amount, safe_sub},
+        fx::{compute_amm_output, compute_amm_rate, validate_slippage},
+        math::{compute_fee, safe_sub},
     },
 };
 use anchor_lang::prelude::*;
@@ -25,14 +25,14 @@ pub struct ExecuteSettlement<'info> {
         seeds = [b"protocol-config"],
         bump = config.bump,
     )]
-    pub config: Account<'info, ProtocolConfig>,
+    pub config: Box<Account<'info, ProtocolConfig>>,
 
     #[account(
         mut,
         seeds = [b"escrow", escrow_id.as_bytes()],
         bump = escrow.bump,
     )]
-    pub escrow: Account<'info, EscrowAccount>,
+    pub escrow: Box<Account<'info, EscrowAccount>>,
 
     #[account(
         mut,
@@ -40,56 +40,56 @@ pub struct ExecuteSettlement<'info> {
         bump,
         constraint = vault_token_account.key() == escrow.vault_token_account @ NexusError::Unauthorized,
     )]
-    pub vault_token_account: InterfaceAccount<'info, TokenAccount>,
+    pub vault_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(
         mut,
         seeds = [b"fx-venue", escrow.token_mint.as_ref(), escrow.settlement_currency_mint.as_ref()],
         bump = fx_venue.bump,
     )]
-    pub fx_venue: Account<'info, FxVenue>,
+    pub fx_venue: Box<Account<'info, FxVenue>>,
 
     #[account(
         mut,
         seeds = [b"fx-vault-base", fx_venue.key().as_ref()],
         bump,
     )]
-    pub fx_vault_base: InterfaceAccount<'info, TokenAccount>,
+    pub fx_vault_base: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(
         mut,
         seeds = [b"fx-vault-quote", fx_venue.key().as_ref()],
         bump,
     )]
-    pub fx_vault_quote: InterfaceAccount<'info, TokenAccount>,
+    pub fx_vault_quote: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(
         mut,
         constraint = exporter_settlement_account.owner == escrow.exporter @ NexusError::Unauthorized,
         constraint = exporter_settlement_account.mint == escrow.settlement_currency_mint @ NexusError::InvalidFxPair,
     )]
-    pub exporter_settlement_account: InterfaceAccount<'info, TokenAccount>,
+    pub exporter_settlement_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(
         mut,
         constraint = treasury_account.owner == config.treasury @ NexusError::Unauthorized,
     )]
-    pub treasury_account: InterfaceAccount<'info, TokenAccount>,
+    pub treasury_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
-    pub token_mint: InterfaceAccount<'info, Mint>,
-    pub settlement_mint: InterfaceAccount<'info, Mint>,
+    pub token_mint: Box<InterfaceAccount<'info, Mint>>,
+    pub settlement_mint: Box<InterfaceAccount<'info, Mint>>,
 
     #[account(
         seeds = [b"kyc-record", escrow.importer_institution_id.as_bytes()],
         bump = importer_kyc.bump,
     )]
-    pub importer_kyc: Account<'info, KycRecord>,
+    pub importer_kyc: Box<Account<'info, KycRecord>>,
 
     #[account(
         seeds = [b"kyc-record", escrow.exporter_institution_id.as_bytes()],
         bump = exporter_kyc.bump,
     )]
-    pub exporter_kyc: Account<'info, KycRecord>,
+    pub exporter_kyc: Box<Account<'info, KycRecord>>,
 
     #[account(
         init,
@@ -98,7 +98,7 @@ pub struct ExecuteSettlement<'info> {
         seeds = [b"travel-rule-log", log_id.as_bytes()],
         bump
     )]
-    pub travel_rule_log: Account<'info, TravelRuleLog>,
+    pub travel_rule_log: Box<Account<'info, TravelRuleLog>>,
 
     #[account(mut)]
     pub settler: Signer<'info>,
@@ -160,9 +160,6 @@ pub fn handler(
     let settlement_currency_key = escrow.settlement_currency_mint;
     let importer_inst_id = escrow.importer_institution_id.clone();
     let exporter_inst_id = escrow.exporter_institution_id.clone();
-    let source_of_funds = escrow.source_of_funds_hash;
-    let dispute_window_hours = escrow.dispute_window_hours;
-
     // Compute settlement amount using AMM rate from venue
     let effective_rate = compute_amm_rate(
         fx_venue.total_base_liquidity,

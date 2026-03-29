@@ -27,7 +27,7 @@ pub struct UpdateKycRecord<'info> {
 
 pub fn handler(
     ctx: Context<UpdateKycRecord>,
-    institution_id: String,
+    _institution_id: String,
     new_tier: u8,
     new_expiry: i64,
     new_aml_risk_score: Option<u8>,

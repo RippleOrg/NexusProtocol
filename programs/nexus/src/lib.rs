@@ -1,3 +1,5 @@
+#![allow(deprecated, unexpected_cfgs)]
+
 use anchor_lang::prelude::*;
 
 pub mod errors;
@@ -11,7 +13,7 @@ use state::compliance::LineageEventType;
 use state::escrow::{ConditionProof, DisputeRuling, FxExecutionParams, TradeParams};
 use state::fx_venue::QuoteParams;
 
-declare_id!("NXSvFssBwGNZPpPSS5tcMqQLYbFf8yRKXBiARUdGi7Mb");
+declare_id!("3GapkzNSKXUgtjLXh4wSuWQBA13EwQSzTRNiDwcpFBp7");
 
 #[program]
 pub mod nexus {
@@ -19,17 +21,38 @@ pub mod nexus {
 
     /// Initialize the NEXUS protocol with admin, fee configuration, and KYC registry
     pub fn initialize_protocol(
-        ctx: Context<initialize_protocol::InitializeProtocol>,
+        ctx: Context<InitializeProtocol>,
         fee_bps: u16,
         admin: Pubkey,
         treasury: Pubkey,
     ) -> Result<()> {
-        initialize_protocol::handler(ctx, fee_bps, admin, treasury)
+        instructions::initialize_protocol::handler(ctx, fee_bps, admin, treasury)
+    }
+
+    /// Initialize an FX venue and seed its base/quote liquidity vaults.
+    pub fn initialize_fx_venue(
+        ctx: Context<InitializeFxVenue>,
+        venue_id: String,
+        fee_bps: u16,
+        six_bfi_rate: i64,
+        max_rate_deviation_bps: u16,
+        initial_base_liquidity: u64,
+        initial_quote_liquidity: u64,
+    ) -> Result<()> {
+        instructions::initialize_fx_venue::handler(
+            ctx,
+            venue_id,
+            fee_bps,
+            six_bfi_rate,
+            max_rate_deviation_bps,
+            initial_base_liquidity,
+            initial_quote_liquidity,
+        )
     }
 
     /// Register a new institution with KYC record
     pub fn register_institution(
-        ctx: Context<register_institution::RegisterInstitution>,
+        ctx: Context<RegisterInstitution>,
         institution_id: String,
         wallet: Pubkey,
         kyc_tier: u8,
@@ -37,7 +60,7 @@ pub mod nexus {
         vasp_id: String,
         expires_at: i64,
     ) -> Result<()> {
-        register_institution::handler(
+        instructions::register_institution::handler(
             ctx,
             institution_id,
             wallet,
@@ -50,36 +73,42 @@ pub mod nexus {
 
     /// Create a new escrow with trade conditions and compliance checks
     pub fn create_escrow(
-        ctx: Context<create_escrow::CreateEscrow>,
+        ctx: Context<CreateEscrow>,
         escrow_id: String,
         deposit_amount: u64,
         params: TradeParams,
         importer_institution_id: String,
     ) -> Result<()> {
-        create_escrow::handler(ctx, escrow_id, deposit_amount, params, importer_institution_id)
+        instructions::create_escrow::handler(
+            ctx,
+            escrow_id,
+            deposit_amount,
+            params,
+            importer_institution_id,
+        )
     }
 
     /// Fund an escrow by transferring tokens to the PDA vault
     pub fn fund_escrow(
-        ctx: Context<fund_escrow::FundEscrow>,
+        ctx: Context<FundEscrow>,
         escrow_id: String,
         amount: u64,
     ) -> Result<()> {
-        fund_escrow::handler(ctx, escrow_id, amount)
+        instructions::fund_escrow::handler(ctx, escrow_id, amount)
     }
 
     /// Submit proof for a condition to mark it satisfied
     pub fn submit_condition(
-        ctx: Context<submit_condition::SubmitCondition>,
+        ctx: Context<SubmitCondition>,
         escrow_id: String,
         proof: ConditionProof,
     ) -> Result<()> {
-        submit_condition::handler(ctx, escrow_id, proof)
+        instructions::submit_condition::handler(ctx, escrow_id, proof)
     }
 
     /// Atomically execute FX settlement: escrow release + FX swap in single transaction
     pub fn execute_settlement(
-        ctx: Context<execute_settlement::ExecuteSettlement>,
+        ctx: Context<ExecuteSettlement>,
         escrow_id: String,
         log_id: String,
         fx_params: FxExecutionParams,
@@ -90,7 +119,7 @@ pub mod nexus {
         transaction_reference: String,
         settlement_start_ms: u64,
     ) -> Result<()> {
-        execute_settlement::handler(
+        instructions::execute_settlement::handler(
             ctx,
             escrow_id,
             log_id,
@@ -106,89 +135,98 @@ pub mod nexus {
 
     /// Raise a dispute for an escrow (importer only, within dispute window)
     pub fn dispute_escrow(
-        ctx: Context<dispute_escrow::DisputeEscrow>,
+        ctx: Context<DisputeEscrow>,
         escrow_id: String,
         reason: String,
     ) -> Result<()> {
-        dispute_escrow::handler(ctx, escrow_id, reason)
+        instructions::dispute_escrow::handler(ctx, escrow_id, reason)
     }
 
     /// Resolve a dispute (admin only)
     pub fn resolve_dispute(
-        ctx: Context<resolve_dispute::ResolveDispute>,
+        ctx: Context<ResolveDispute>,
         escrow_id: String,
         ruling: DisputeRuling,
     ) -> Result<()> {
-        resolve_dispute::handler(ctx, escrow_id, ruling)
+        instructions::resolve_dispute::handler(ctx, escrow_id, ruling)
     }
 
     /// Refund escrow after expiry
     pub fn refund_escrow(
-        ctx: Context<refund_escrow::RefundEscrow>,
+        ctx: Context<RefundEscrow>,
         escrow_id: String,
     ) -> Result<()> {
-        refund_escrow::handler(ctx, escrow_id)
+        instructions::refund_escrow::handler(ctx, escrow_id)
     }
 
     /// Post an RFQ quote to the FX venue (KYC tier 2+ required)
     pub fn post_fx_quote(
-        ctx: Context<post_fx_quote::PostFxQuote>,
+        ctx: Context<PostFxQuote>,
         params: QuoteParams,
         market_maker_institution_id: String,
     ) -> Result<()> {
-        post_fx_quote::handler(ctx, params, market_maker_institution_id)
+        instructions::post_fx_quote::handler(ctx, params, market_maker_institution_id)
     }
 
     /// Cancel an unfilled RFQ quote
     pub fn cancel_fx_quote(
-        ctx: Context<cancel_fx_quote::CancelFxQuote>,
+        ctx: Context<CancelFxQuote>,
         quote_id: String,
     ) -> Result<()> {
-        cancel_fx_quote::handler(ctx, quote_id)
+        instructions::cancel_fx_quote::handler(ctx, quote_id)
     }
 
     /// Add liquidity to an FX venue pool
     pub fn add_fx_liquidity(
-        ctx: Context<add_fx_liquidity::AddFxLiquidity>,
-        pool_id: String,
+        ctx: Context<AddFxLiquidity>,
         amount_a: u64,
         amount_b: u64,
         provider_institution_id: String,
     ) -> Result<()> {
-        add_fx_liquidity::handler(ctx, pool_id, amount_a, amount_b, provider_institution_id)
+        instructions::add_fx_liquidity::handler(
+            ctx,
+            amount_a,
+            amount_b,
+            provider_institution_id,
+        )
     }
 
     /// Remove liquidity from an FX venue pool
     pub fn remove_fx_liquidity(
-        ctx: Context<remove_fx_liquidity::RemoveFxLiquidity>,
-        pool_id: String,
+        ctx: Context<RemoveFxLiquidity>,
         lp_amount: u64,
     ) -> Result<()> {
-        remove_fx_liquidity::handler(ctx, pool_id, lp_amount)
+        instructions::remove_fx_liquidity::handler(ctx, lp_amount)
     }
 
     /// Update KYC record tier and expiry (admin only)
     pub fn update_kyc_record(
-        ctx: Context<update_kyc_record::UpdateKycRecord>,
+        ctx: Context<UpdateKycRecord>,
         institution_id: String,
         new_tier: u8,
         new_expiry: i64,
         new_aml_risk_score: Option<u8>,
     ) -> Result<()> {
-        update_kyc_record::handler(ctx, institution_id, new_tier, new_expiry, new_aml_risk_score)
+        instructions::update_kyc_record::handler(
+            ctx,
+            institution_id,
+            new_tier,
+            new_expiry,
+            new_aml_risk_score,
+        )
     }
 
     /// Revoke a KYC record (admin only)
     pub fn revoke_kyc_record(
-        ctx: Context<revoke_kyc_record::RevokeKycRecord>,
+        ctx: Context<RevokeKycRecord>,
         institution_id: String,
     ) -> Result<()> {
-        revoke_kyc_record::handler(ctx, institution_id)
+        instructions::revoke_kyc_record::handler(ctx, institution_id)
     }
 
     /// Fund an escrow using tokenized commodity collateral (precious metals / RWA)
     pub fn fund_escrow_with_collateral(
-        ctx: Context<fund_escrow_with_collateral::FundEscrowWithCollateral>,
+        ctx: Context<FundEscrowWithCollateral>,
         escrow_id: String,
         collateral_amount: u64,
         six_bfi_price: i64,
@@ -198,7 +236,7 @@ pub mod nexus {
         ltv_bps: u16,
         liquidation_threshold_bps: u16,
     ) -> Result<()> {
-        fund_escrow_with_collateral::handler(
+        instructions::fund_escrow_with_collateral::handler(
             ctx,
             escrow_id,
             collateral_amount,
@@ -213,13 +251,13 @@ pub mod nexus {
 
     /// Submit updated collateral price and check LTV health (admin/oracle only)
     pub fn check_collateral_health(
-        ctx: Context<check_collateral_health::CheckCollateralHealth>,
+        ctx: Context<CheckCollateralHealth>,
         escrow_id: String,
         current_price: i64,
         price_timestamp: i64,
         admin_institution_id: String,
     ) -> Result<()> {
-        check_collateral_health::handler(
+        instructions::check_collateral_health::handler(
             ctx,
             escrow_id,
             current_price,
@@ -230,15 +268,15 @@ pub mod nexus {
 
     /// Liquidate collateral that has been flagged for liquidation (admin only)
     pub fn liquidate_collateral(
-        ctx: Context<liquidate_collateral::LiquidateCollateral>,
+        ctx: Context<LiquidateCollateral>,
         escrow_id: String,
     ) -> Result<()> {
-        liquidate_collateral::handler(ctx, escrow_id)
+        instructions::liquidate_collateral::handler(ctx, escrow_id)
     }
 
     /// Create a fund lineage record for source-of-funds audit chain (admin only)
     pub fn create_lineage_record(
-        ctx: Context<create_lineage_record::CreateLineageRecord>,
+        ctx: Context<CreateLineageRecord>,
         record_id: String,
         institution_id: String,
         escrow_id: Option<String>,
@@ -249,7 +287,7 @@ pub mod nexus {
         transaction_signature: String,
         attestation: [u8; 64],
     ) -> Result<()> {
-        create_lineage_record::handler(
+        instructions::create_lineage_record::handler(
             ctx,
             record_id,
             institution_id,
@@ -266,11 +304,16 @@ pub mod nexus {
     /// Verify a fund lineage chain for regulatory inspection
     /// Pass ordered chain records via remaining_accounts (oldest first)
     pub fn verify_lineage_chain(
-        ctx: Context<verify_lineage_chain::VerifyLineageChain>,
+        ctx: Context<VerifyLineageChain>,
         institution_id: String,
         start_record: Pubkey,
         end_record: Pubkey,
     ) -> Result<()> {
-        verify_lineage_chain::handler(ctx, institution_id, start_record, end_record)
+        instructions::verify_lineage_chain::handler(
+            ctx,
+            institution_id,
+            start_record,
+            end_record,
+        )
     }
 }

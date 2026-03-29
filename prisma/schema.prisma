@@ -9,14 +9,26 @@ datasource db {
 
 model Institution {
   id              String   @id @default(cuid())
+  dynamicUserId   String?  @unique
   wallet          String   @unique
   name            String
+  entityType      String?
+  licenseNumber   String?
+  regulatorName   String?
+  lei             String?
   jurisdiction    String
   kycTier         Int      @default(1)
   kycVerifiedAt   DateTime @default(now())
   kycExpiresAt    DateTime
   isActive        Boolean  @default(true)
+  travelRuleVaspId String?
+  travelRuleVaspName String?
+  travelRuleProtocol String?
+  contactEmail    String?
   fireblocksVaultId String?
+  fireblocksWebhookUrl String?
+  onboardingCompletedAt DateTime?
+  lastLoginAt     DateTime?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -29,6 +41,7 @@ model Institution {
 
 model Escrow {
   id                     String    @id @default(cuid())
+  escrowSeed             String?
   onChainPda             String    @unique
   importerInstitutionId  String
   exporterInstitutionId  String

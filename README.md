@@ -668,7 +668,7 @@ anchor build
 Copy the example env file and fill in your credentials:
 
 ```bash
-cp .env.example .env.local
+cp .env .env.local
 ```
 
 #### Solana
@@ -676,27 +676,25 @@ cp .env.example .env.local
 NEXT_PUBLIC_SOLANA_RPC_URL=https://api.devnet.solana.com
 NEXT_PUBLIC_NEXUS_PROGRAM_ID=NXSvFssBwGNZPpPSS5tcMqQLYbFf8yRKXBiARUdGi7Mb
 NEXT_PUBLIC_USDC_MINT=4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU
+NEXT_PUBLIC_EURC_MINT=HzwqbKZw8HxMN6bF2yFZNrht3c2iXXzpKcFu7uBEDKtr
 NEXT_PUBLIC_NETWORK=devnet
 ```
 
 #### Protocol Wallets
 ```env
 NEXUS_TREASURY_WALLET=<treasury_pubkey>
-NEXUS_ADMIN_WALLET=<admin_pubkey>
+NEXUS_ADMIN_KEYPAIR_PATH=./nexus-deployer.json
+# Optional inline secret for Vercel / serverless deployments:
+NEXUS_ADMIN_SECRET_KEY_JSON=[12,34,...]
+# Optional report-signing fallback:
 NEXUS_ADMIN_SECRET_KEY=<base58_encoded_64_byte_keypair>
+NEXUS_ADMIN_WALLET=<admin_pubkey>
 ```
 
 #### Database & Cache
 ```env
 DATABASE_URL=postgresql://nexus:password@localhost:5432/nexus_db
 REDIS_URL=redis://localhost:6379
-```
-
-#### Authentication
-```env
-NEXTAUTH_SECRET=<random_secret>
-NEXTAUTH_URL=http://localhost:3000
-JWT_SECRET=<random_jwt_secret>
 ```
 
 #### SIX Group BFI (mTLS)
@@ -755,6 +753,20 @@ yarn dev
 
 The application will be available at [http://localhost:3000](http://localhost:3000).
 
+To populate the dashboard and trade views with live devnet activity:
+
+```bash
+# 1. Fund the admin wallet with SOL and Circle devnet USDC
+solana address -k nexus-deployer.json
+
+# 2. Seed on-chain institutions, venues, and escrow activity
+npm run seed:devnet
+```
+
+The seed script now uses official Circle devnet `USDC` as the escrow deposit
+asset, creates a mix of funded, ready, disputed, settled, and refunded escrows,
+and keeps the app statistics tied to Solana devnet instead of local-only rows.
+
 ---
 
 ## Smart Contract Development
@@ -786,6 +798,24 @@ solana config set --url devnet
 # Deploy the compiled program
 anchor deploy
 ```
+
+### Devnet Token Testing
+
+Use the in-app `Devnet Token Lab` on the dashboard to fund a connected wallet for testing.
+
+- Official devnet assets:
+  `SOL` from `https://faucet.solana.com/`
+  `USDC` and `EURC` from `https://faucet.circle.com/`
+- Free custom corridor tokens:
+  `NGNC`, `KESC`, `GHSC`, and `GBPC` can be minted in-app to the connected wallet.
+- Create another custom test mint:
+
+```bash
+npm run devnet:create-mint -- SGDC "Singapore Dollar Coin"
+```
+
+The script writes a new mint keypair into `keys/devnet/mints/` and prints the
+`NEXT_PUBLIC_<CODE>_MINT=...` env line you can add to `.env`.
 
 ### IDL
 
@@ -834,6 +864,61 @@ yarn lint
 ---
 
 ## Deployment
+
+### Vercel Deployment
+
+1. Import the repository into Vercel and let it detect the project as `Next.js`.
+2. Set the install command to `npm install` or `yarn install`.
+3. Set the build command to `npm run build`.
+4. Add the required environment variables in the Vercel project settings.
+
+Minimum runtime env vars:
+
+```env
+NEXT_PUBLIC_SOLANA_RPC_URL=https://api.devnet.solana.com
+NEXT_PUBLIC_NEXUS_PROGRAM_ID=<program_id>
+NEXT_PUBLIC_USDC_MINT=4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU
+NEXT_PUBLIC_EURC_MINT=HzwqbKZw8HxMN6bF2yFZNrht3c2iXXzpKcFu7uBEDKtr
+NEXUS_ADMIN_SECRET_KEY_JSON=[...64 secret key bytes from nexus-deployer.json...]
+NEXUS_ADMIN_WALLET=<admin_pubkey>
+```
+
+Optional but recommended env vars:
+
+```env
+DATABASE_URL=<postgres_connection_string>
+REDIS_URL=<redis_connection_string>
+SIX_CERT_PATH=<if mounted outside Vercel, otherwise disable SIX mTLS calls>
+SIX_KEY_PATH=<if mounted outside Vercel, otherwise disable SIX mTLS calls>
+SIX_CERT_PASSWORD=<certificate_password>
+CHAINALYSIS_API_KEY=<api_key>
+KEYROCK_API_KEY=<api_key>
+SOLSTREAM_ENDPOINT=<websocket_endpoint>
+SOLSTREAM_API_KEY=<api_key>
+```
+
+Deploy with the Vercel CLI:
+
+```bash
+# Preview deployment
+vercel
+
+# Production deployment
+vercel --prod
+```
+
+For CI/CD, the clean Vercel flow is:
+
+```bash
+vercel pull --yes --environment=production
+vercel build --prod
+vercel deploy --prebuilt --prod
+```
+
+If you want the server routes to sign reports, set either
+`NEXUS_ADMIN_SECRET_KEY_JSON` or `NEXUS_ADMIN_SECRET_KEY`. The inline JSON form
+is the easiest fit for Vercel because it can be copied directly from
+`nexus-deployer.json` without requiring a bundled key file.
 
 ### Production Checklist
 

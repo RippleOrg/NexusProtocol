@@ -1,155 +1,202 @@
 "use client";
 
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import ComplianceEventFeed from "@/components/compliance/ComplianceEventFeed";
+import { useAmlScreen } from "@/hooks/useCompliance";
+import { useNexusSession } from "@/hooks/useNexusSession";
+import { nexusFetch } from "@/lib/client/nexus-client";
+import type { DashboardOverview } from "@/lib/nexus/types";
 
 export default function CompliancePage() {
+  const { authContext, institution } = useNexusSession();
   const [walletInput, setWalletInput] = useState("");
-  const [amlResult, setAmlResult] = useState<{
-    riskScore?: number;
-    isSanctioned?: boolean;
-    recommendation?: string;
-    riskCategories?: string[];
-    error?: string;
-  } | null>(null);
-  const [screening, setScreening] = useState(false);
+  const amlMutation = useAmlScreen();
 
-  const runAmlScreen = async () => {
-    if (!walletInput.trim()) return;
-    setScreening(true);
-    setAmlResult(null);
-    try {
-      const res = await fetch("/api/aml/screen", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ wallet: walletInput.trim(), institutionId: "unknown" }),
-      });
-      const data = (await res.json()) as {
-        result?: {
-          riskScore: number;
-          isSanctioned: boolean;
-          recommendation: string;
-          riskCategories: string[];
-        };
-        error?: string;
-      };
-      if (data.result) {
-        setAmlResult(data.result);
-      } else {
-        setAmlResult({ error: data.error ?? "Screening failed" });
-      }
-    } catch (err) {
-      setAmlResult({ error: String(err) });
-    } finally {
-      setScreening(false);
-    }
-  };
+  const overviewQuery = useQuery({
+    queryKey: ["dashboard-overview", "compliance", institution?.id],
+    queryFn: () =>
+      nexusFetch<DashboardOverview>(
+        "/api/dashboard/overview",
+        { cache: "no-store" },
+        authContext
+      ),
+    enabled: Boolean(institution),
+    staleTime: 15_000,
+  });
+
+  const overview = overviewQuery.data;
 
   return (
-    <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-white">Compliance Center</h1>
-        <p className="text-gray-400 text-sm">
-          KYC/AML/KYT monitoring and Travel Rule management
-        </p>
+    <div className="two-col">
+      <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+        <div className="panel">
+          <div className="panel-header">
+            <div className="panel-title">Wallet Screening</div>
+            <span className="badge bb">CHAINALYSIS</span>
+          </div>
+          <div className="panel-body">
+            <div className="form-group">
+              <label className="form-label">Solana Wallet Address</label>
+              <input
+                value={walletInput}
+                onChange={(event) => setWalletInput(event.target.value)}
+                className="form-input"
+                placeholder="Enter a wallet to screen"
+              />
+            </div>
+
+            <button
+              type="button"
+              onClick={() =>
+                amlMutation.mutate({
+                  wallet: walletInput.trim(),
+                  institutionId: institution?.id ?? undefined,
+                })
+              }
+              disabled={amlMutation.isPending || !walletInput.trim()}
+              className="btn-primary"
+              style={{ width: "100%" }}
+            >
+              {amlMutation.isPending ? "Screening..." : "Run AML check"}
+            </button>
+
+            {amlMutation.data?.result ? (
+              <div className="verify-badge" style={{ marginTop: "14px" }}>
+                <div className="verify-icon">✓</div>
+                <div>
+                  <div className="verify-text">
+                    {amlMutation.data.result.recommendation} · score{" "}
+                    {amlMutation.data.result.riskScore}
+                  </div>
+                  <div className="verify-sub">
+                    {amlMutation.data.result.riskCategories.length
+                      ? amlMutation.data.result.riskCategories.join(", ")
+                      : "No risk categories returned"}
+                  </div>
+                </div>
+              </div>
+            ) : null}
+
+            {amlMutation.error ? (
+              <div className="warning-box" style={{ marginTop: "14px" }}>
+                <div className="warning-box-text">
+                  {amlMutation.error instanceof Error
+                    ? amlMutation.error.message
+                    : "Screening failed"}
+                </div>
+              </div>
+            ) : null}
+          </div>
+        </div>
+
+        <ComplianceEventFeed maxRows={16} />
       </div>
 
-      {/* AML Screener */}
-      <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
-        <h2 className="text-white font-semibold mb-3">AML Wallet Screening</h2>
-        <div className="flex gap-3">
-          <input
-            type="text"
-            placeholder="Solana wallet address..."
-            value={walletInput}
-            onChange={(e) => setWalletInput(e.target.value)}
-            className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-green-500"
-          />
-          <button
-            onClick={runAmlScreen}
-            disabled={screening || !walletInput.trim()}
-            className="bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-          >
-            {screening ? "Screening..." : "Screen Wallet"}
-          </button>
+      <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+        <div className="panel">
+          <div className="panel-header">
+            <div className="panel-title">KYC Registry</div>
+          </div>
+          <div className="panel-body">
+            <div className="comp-list">
+              <div className="comp-row">
+                <span className="comp-row-label">
+                  <strong>{institution?.name ?? "Current institution"}</strong>
+                </span>
+                <span className="badge bg">
+                  Tier {institution?.kycTier ?? 0} · {institution?.jurisdiction ?? "N/A"}
+                </span>
+              </div>
+              {overview?.latestEscrows.slice(0, 3).map((escrow) => (
+                <div key={escrow.id} className="comp-row">
+                  <span className="comp-row-label">
+                    <strong>{escrow.exporterInstitutionName}</strong>
+                  </span>
+                  <span className="badge bg">{escrow.status.toUpperCase()}</span>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
-        {amlResult && (
-          <div className="mt-4 p-3 bg-gray-800 rounded-lg">
-            {amlResult.error ? (
-              <p className="text-red-400 text-sm">{amlResult.error}</p>
-            ) : (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-400 text-sm">Recommendation</span>
-                  <span
-                    className={`text-sm font-semibold ${
-                      amlResult.recommendation === "CLEAR"
-                        ? "text-green-400"
-                        : amlResult.recommendation === "REVIEW"
-                        ? "text-yellow-400"
-                        : "text-red-400"
-                    }`}
-                  >
-                    {amlResult.recommendation}
-                  </span>
+
+        <div className="panel">
+          <div className="panel-header">
+            <div className="panel-title">Travel Rule Logs</div>
+          </div>
+          {overview?.latestEscrows.length ? (
+            <table className="tbl">
+              <thead>
+                <tr>
+                  <th>Escrow</th>
+                  <th>Amount</th>
+                  <th>Counterparty</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {overview.latestEscrows.map((escrow) => (
+                  <tr key={escrow.id}>
+                    <td className="table-mono" style={{ color: "var(--accent)" }}>
+                      {escrow.escrowId}
+                    </td>
+                    <td className="table-mono">
+                      {(Number(escrow.depositAmount) / 1_000_000).toLocaleString("en-US", {
+                        style: "currency",
+                        currency: "USD",
+                        maximumFractionDigits: 0,
+                      })}
+                    </td>
+                    <td>{escrow.exporterInstitutionName}</td>
+                    <td>
+                      <span className={`badge ${escrow.travelRuleAttached ? "bg" : "ba"}`}>
+                        {escrow.travelRuleAttached ? "ATTACHED" : "PENDING"}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <div className="panel-body">
+              <div className="nexus-empty">
+                <div className="nexus-empty-title">No logs yet</div>
+                <div className="nexus-empty-copy">
+                  Travel Rule records will appear once live trades are created.
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-400 text-sm">Risk Score</span>
-                  <span className="text-white font-mono">
-                    {amlResult.riskScore} / 10
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-400 text-sm">Sanctioned</span>
-                  <span
-                    className={amlResult.isSanctioned ? "text-red-400" : "text-green-400"}
-                  >
-                    {amlResult.isSanctioned ? "YES ⚠️" : "No ✓"}
-                  </span>
-                </div>
-                {amlResult.riskCategories && amlResult.riskCategories.length > 0 && (
-                  <div>
-                    <span className="text-gray-400 text-sm">Risk Categories</span>
-                    <div className="flex flex-wrap gap-1 mt-1">
-                      {amlResult.riskCategories.map((c) => (
-                        <span
-                          key={c}
-                          className="bg-red-900/50 text-red-400 text-xs px-2 py-0.5 rounded-full"
-                        >
-                          {c}
-                        </span>
-                      ))}
-                    </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="panel">
+          <div className="panel-header">
+            <div className="panel-title">AML Archive</div>
+          </div>
+          <div className="panel-body">
+            {overview?.latestAmlScreenings.length ? (
+              <div className="comp-list">
+                {overview.latestAmlScreenings.map((screening) => (
+                  <div key={screening.id} className="comp-row">
+                    <span className="comp-row-label">{screening.wallet}</span>
+                    <span
+                      className={`badge ${
+                        screening.recommendation === "CLEAR" ? "bg" : "ba"
+                      }`}
+                    >
+                      {screening.recommendation}
+                    </span>
                   </div>
-                )}
+                ))}
+              </div>
+            ) : (
+              <div style={{ fontSize: "13px", lineHeight: "1.7", color: "var(--ink3)" }}>
+                No AML screenings have been stored for this institution yet.
               </div>
             )}
           </div>
-        )}
-      </div>
-
-      {/* KYC Management */}
-      <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
-        <h2 className="text-white font-semibold mb-3">KYC Registry</h2>
-        <div className="grid grid-cols-3 gap-4">
-          {[
-            { tier: "Tier 1 — Basic", count: 0, color: "text-blue-400" },
-            { tier: "Tier 2 — Enhanced", count: 0, color: "text-purple-400" },
-            { tier: "Tier 3 — Institutional", count: 0, color: "text-green-400" },
-          ].map((t) => (
-            <div
-              key={t.tier}
-              className="bg-gray-800 rounded-lg p-3 text-center"
-            >
-              <div className={`text-2xl font-bold ${t.color}`}>{t.count}</div>
-              <div className="text-gray-400 text-xs mt-1">{t.tier}</div>
-            </div>
-          ))}
         </div>
       </div>
-
-      {/* Real-time Compliance Event Feed (Solstream) */}
-      <ComplianceEventFeed />
     </div>
   );
 }

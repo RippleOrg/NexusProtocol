@@ -1,14 +1,15 @@
 import { NextResponse } from "next/server";
 import { sixBfiClient } from "@/lib/integrations/six-bfi";
 import { getStreamClient } from "@/lib/integrations/six-bfi-stream";
+import { getFallbackRateByPair } from "@/lib/integrations/free-market-data";
 
 const FX_PAIRS = [
-  { base: "USD", quote: "NGN", label: "USDC/NGNC", valorBc: "199113_148" },
-  { base: "USD", quote: "KES", label: "USDC/KESC", valorBc: "275141_148" },
-  { base: "USD", quote: "GHS", label: "USDC/GHSC", valorBc: "3206444_148" },
-  { base: "EUR", quote: "USD", label: "USDC/EURC", valorBc: "946681_148" },
-  { base: "GBP", quote: "USD", label: "USDC/GBPC", valorBc: "275017_148" },
-  { base: "USD", quote: "SGD", label: "USDC/SGDC", valorBc: "" },
+  { base: "USD", quote: "NGN", pair: "USD/NGN", label: "USDC/NGNC", valorBc: "199113_148" },
+  { base: "USD", quote: "KES", pair: "USD/KES", label: "USDC/KESC", valorBc: "275141_148" },
+  { base: "USD", quote: "GHS", pair: "USD/GHS", label: "USDC/GHSC", valorBc: "3206444_148" },
+  { base: "EUR", quote: "USD", pair: "EUR/USD", label: "USDC/EURC", valorBc: "946681_148" },
+  { base: "GBP", quote: "USD", pair: "GBP/USD", label: "USDC/GBPC", valorBc: "275017_148" },
+  { base: "USD", quote: "SGD", pair: "USD/SGD", label: "USDC/SGDC", valorBc: "" },
 ];
 
 export async function GET() {
@@ -17,7 +18,7 @@ export async function GET() {
     const fetchStart = Date.now();
 
     const rates = await Promise.allSettled(
-      FX_PAIRS.map(async ({ base, quote, label, valorBc }) => {
+      FX_PAIRS.map(async ({ base, quote, pair, label, valorBc }) => {
         // 1. Try stream (sub-millisecond) if valorBc is mapped and not stale
         if (valorBc) {
           const streamRate = streamClient.getLatestRate(valorBc);
@@ -32,19 +33,46 @@ export async function GET() {
               timestamp: streamRate.timestamp,
               source: "SIX_BFI" as const,
               rateSource: "STREAM" as const,
+              provider: "SIX_BFI_STREAM" as const,
               latencyMs: Date.now() - streamRate.timestamp,
             };
           }
         }
 
         // 2. Fall back to REST intradaySnapshot
-        const rate = await sixBfiClient.getFxRate(base, quote);
-        return {
-          ...rate,
-          label,
-          rateSource: "REST" as const,
-          latencyMs: Date.now() - fetchStart,
-        };
+        try {
+          const rate = await sixBfiClient.getFxRate(base, quote);
+          return {
+            ...rate,
+            label,
+            rateSource: "REST" as const,
+            provider: "SIX_BFI_REST" as const,
+            latencyMs: Date.now() - fetchStart,
+          };
+        } catch {
+          if (!valorBc) {
+            throw new Error(`No fallback configured for ${pair}`);
+          }
+
+          const fallbackRate = await getFallbackRateByPair({
+            valorBc,
+            pair,
+          });
+
+          return {
+            pair: `${base}${quote}`,
+            label,
+            rate: fallbackRate.rate,
+            bid: fallbackRate.bid,
+            ask: fallbackRate.ask,
+            change24h: fallbackRate.change24h,
+            timestamp: fallbackRate.timestamp,
+            source: fallbackRate.source,
+            rateSource: "FALLBACK" as const,
+            provider: fallbackRate.provider,
+            latencyMs: Date.now() - fetchStart,
+          };
+        }
       })
     );
 
@@ -69,6 +97,7 @@ export async function GET() {
         change24h: 0,
         source: "SIX_BFI" as const,
         rateSource: "CACHE" as const,
+        provider: "UNAVAILABLE" as const,
         latencyMs: 0,
         error: true,
       };

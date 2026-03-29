@@ -39,15 +39,59 @@ function pda(sig: string): string {
 
 /** Sign a message (Buffer) with the admin Ed25519 secret key.  Returns a
  *  64-byte Uint8Array or null when the key is not configured. */
-async function adminSign(message: Buffer): Promise<Uint8Array | null> {
+async function getAdminKeyMaterial(): Promise<{
+  publicKey: string | null;
+  secretKey: Uint8Array | null;
+}> {
+  const inlineSecretKey = process.env.NEXUS_ADMIN_SECRET_KEY_JSON;
+
+  if (inlineSecretKey) {
+    try {
+      const { Keypair } = await import("@solana/web3.js");
+      const secretKey = Uint8Array.from(
+        JSON.parse(inlineSecretKey) as number[]
+      );
+      const keypair = Keypair.fromSecretKey(secretKey);
+
+      return {
+        publicKey: keypair.publicKey.toBase58(),
+        secretKey,
+      };
+    } catch {
+      return { publicKey: process.env.NEXUS_ADMIN_WALLET ?? null, secretKey: null };
+    }
+  }
+
   const keyB58 = process.env.NEXUS_ADMIN_SECRET_KEY;
-  if (!keyB58) return null;
+  if (!keyB58) {
+    return { publicKey: process.env.NEXUS_ADMIN_WALLET ?? null, secretKey: null };
+  }
+
   try {
     const bs58 = (await import("bs58")).default;
+    const { Keypair } = await import("@solana/web3.js");
+    const secretKey = bs58.decode(keyB58);
+
+    if (secretKey.length !== 64) {
+      return { publicKey: process.env.NEXUS_ADMIN_WALLET ?? null, secretKey: null };
+    }
+
+    const keypair = Keypair.fromSecretKey(secretKey);
+    return {
+      publicKey: keypair.publicKey.toBase58(),
+      secretKey,
+    };
+  } catch {
+    return { publicKey: process.env.NEXUS_ADMIN_WALLET ?? null, secretKey: null };
+  }
+}
+
+async function adminSign(message: Buffer): Promise<Uint8Array | null> {
+  const adminKey = await getAdminKeyMaterial();
+  if (!adminKey.secretKey) return null;
+  try {
     const nacl = (await import("tweetnacl")).default;
-    const keyBytes = bs58.decode(keyB58);
-    if (keyBytes.length !== 64) return null;
-    return nacl.sign.detached(message, keyBytes);
+    return nacl.sign.detached(message, adminKey.secretKey);
   } catch {
     return null;
   }
@@ -172,7 +216,7 @@ export async function POST(req: NextRequest) {
           "https://api.devnet.solana.com";
         const programId = new PublicKey(
           process.env.NEXT_PUBLIC_NEXUS_PROGRAM_ID ??
-            "NXSvFssBwGNZPpPSS5tcMqQLYbFf8yRKXBiARUdGi7Mb"
+            "3GapkzNSKXUgtjLXh4wSuWQBA13EwQSzTRNiDwcpFBp7"
         );
         const connection = new Connection(rpcUrl, "confirmed");
 
@@ -298,6 +342,7 @@ export async function POST(req: NextRequest) {
 
     const PDFDocument = (await import("pdfkit")).default;
     const crypto = await import("crypto");
+    const adminKey = await getAdminKeyMaterial();
     const chunks: Buffer[] = [];
 
     await new Promise<void>((resolve, reject) => {
@@ -310,8 +355,8 @@ export async function POST(req: NextRequest) {
         const generatedAt = new Date().toUTCString();
         const programId =
           process.env.NEXT_PUBLIC_NEXUS_PROGRAM_ID ??
-          "NXSvFssBwGNZPpPSS5tcMqQLYbFf8yRKXBiARUdGi7Mb";
-        const adminPubkey = process.env.NEXUS_ADMIN_WALLET ?? "(not configured)";
+          "3GapkzNSKXUgtjLXh4wSuWQBA13EwQSzTRNiDwcpFBp7";
+        const adminPubkey = adminKey.publicKey ?? "(not configured)";
 
         // ── PAGE 1: COVER ────────────────────────────────────────────────
 
@@ -739,7 +784,7 @@ export async function POST(req: NextRequest) {
       generatedAt: Date.now(),
       hash,
       attestation: attestation || null,
-      adminPublicKey: process.env.NEXUS_ADMIN_WALLET ?? null,
+      adminPublicKey: adminKey.publicKey,
       recordCounts: {
         escrows: escrowsTyped.length,
         travelRuleLogs: trTyped.length,
@@ -771,4 +816,3 @@ export async function POST(req: NextRequest) {
     );
   }
 }
-
