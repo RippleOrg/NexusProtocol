@@ -32,7 +32,7 @@ import type {
   CreateEscrowInput,
   InstitutionDirectoryItem,
 } from "@/lib/nexus/types";
-import type { Nexus } from "@/target/types/nexus";
+import type { Nexus } from "@/types/nexus";
 
 type AnchorWallet = ConstructorParameters<typeof AnchorProvider>[1];
 

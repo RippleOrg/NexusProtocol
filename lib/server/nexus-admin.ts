@@ -27,7 +27,7 @@ import {
   deriveKycRegistryPda,
   deriveProtocolConfigPda,
 } from "@/lib/nexus/onchain";
-import type { Nexus } from "@/target/types/nexus";
+import type { Nexus } from "@/types/nexus";
 
 type AnchorWallet = ConstructorParameters<typeof AnchorProvider>[1];
 const DEFAULT_ADMIN_KEYPAIR_PATH = "./nexus-deployer.json";
