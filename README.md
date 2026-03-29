@@ -1051,16 +1051,6 @@ yarn start
 ### Reporting Vulnerabilities
 Please report security vulnerabilities privately by opening a [GitHub Security Advisory](https://github.com/RippleOrg/NexusProtocol/security/advisories/new).
 
----
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/my-feature`
-3. Make your changes and add tests
-4. Run the full test suite: `yarn anchor:test && yarn test`
-5. Lint your code: `yarn lint`
-6. Open a pull request against `main`
 
 ---
 
