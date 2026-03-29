@@ -165,7 +165,7 @@ Traditional cross-border settlements are slow, opaque, and compliance-heavy. NEX
 
 The on-chain program lives in `programs/nexus/` and is compiled with Anchor 0.30.
 
-**Program ID:** `NXSvFssBwGNZPpPSS5tcMqQLYbFf8yRKXBiARUdGi7Mb`
+**Program ID:** `3GapkzNSKXUgtjLXh4wSuWQBA13EwQSzTRNiDwcpFBp7`
 
 ```
 programs/nexus/src/
@@ -677,7 +677,11 @@ NEXT_PUBLIC_SOLANA_RPC_URL=https://api.devnet.solana.com
 ALCHEMY_SOLANA_API_KEY=<optional_alchemy_key_for_server_side_devnet_reads>
 NEXT_PUBLIC_NEXUS_PROGRAM_ID=3GapkzNSKXUgtjLXh4wSuWQBA13EwQSzTRNiDwcpFBp7
 NEXT_PUBLIC_USDC_MINT=4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU
+NEXT_PUBLIC_NGNC_MINT=ACr41zznMgboQtZZZCxKovtXDbhThwGsyArP665FR3FE
+NEXT_PUBLIC_KESC_MINT=HMZzbKpg4zx8WugM4wJBTppfCzpGVvtzXNRgcczQMQXY
+NEXT_PUBLIC_GHSC_MINT=ApoxiRczs86u8Aa4QycxjKEzMU6nZy4LuYQrvKKs9bh6
 NEXT_PUBLIC_EURC_MINT=HzwqbKZw8HxMN6bF2yFZNrht3c2iXXzpKcFu7uBEDKtr
+NEXT_PUBLIC_GBPC_MINT=2heB7u3VKeDmWfqj1ztfV6mxUuyYhhQXBPRjyk847JH8
 NEXT_PUBLIC_NETWORK=devnet
 ```
 
@@ -731,7 +735,7 @@ KEYROCK_API_KEY=<api_key>
 
 #### Solstream
 ```env
-SOLSTREAM_ENDPOINT=wss://stream.solstice.sh/v1/NXSvFssBwGNZPpPSS5tcMqQLYbFf8yRKXBiARUdGi7Mb
+SOLSTREAM_ENDPOINT=wss://stream.solstice.sh/v1/3GapkzNSKXUgtjLXh4wSuWQBA13EwQSzTRNiDwcpFBp7
 SOLSTREAM_API_KEY=<api_key>
 ```
 
@@ -890,7 +894,11 @@ NEXT_PUBLIC_SOLANA_RPC_URL=https://api.devnet.solana.com
 ALCHEMY_SOLANA_API_KEY=<optional_but_recommended_for_server_reads>
 NEXT_PUBLIC_NEXUS_PROGRAM_ID=3GapkzNSKXUgtjLXh4wSuWQBA13EwQSzTRNiDwcpFBp7
 NEXT_PUBLIC_USDC_MINT=4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU
+NEXT_PUBLIC_NGNC_MINT=ACr41zznMgboQtZZZCxKovtXDbhThwGsyArP665FR3FE
+NEXT_PUBLIC_KESC_MINT=HMZzbKpg4zx8WugM4wJBTppfCzpGVvtzXNRgcczQMQXY
+NEXT_PUBLIC_GHSC_MINT=ApoxiRczs86u8Aa4QycxjKEzMU6nZy4LuYQrvKKs9bh6
 NEXT_PUBLIC_EURC_MINT=HzwqbKZw8HxMN6bF2yFZNrht3c2iXXzpKcFu7uBEDKtr
+NEXT_PUBLIC_GBPC_MINT=2heB7u3VKeDmWfqj1ztfV6mxUuyYhhQXBPRjyk847JH8
 NEXUS_ADMIN_SECRET_KEY_JSON=[...64 secret key bytes from nexus-deployer.json...]
 NEXUS_ADMIN_WALLET=<admin_pubkey>
 ```
