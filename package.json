@@ -4,6 +4,7 @@
   "description": "NEXUS Protocol - Compliance-native programmable trade settlement and institutional FX venue on Solana",
   "private": true,
   "scripts": {
+    "postinstall": "prisma generate",
     "build": "next build",
     "dev": "next dev",
     "start": "next start",
@@ -14,6 +15,7 @@
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
     "seed:devnet": "node --env-file=.env scripts/seed-devnet.cjs",
     "devnet:create-mint": "node --env-file=.env scripts/create-devnet-custom-mint.cjs"
   },

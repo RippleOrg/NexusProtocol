@@ -674,6 +674,7 @@ cp .env .env.local
 #### Solana
 ```env
 NEXT_PUBLIC_SOLANA_RPC_URL=https://api.devnet.solana.com
+ALCHEMY_SOLANA_API_KEY=<optional_alchemy_key_for_server_side_devnet_reads>
 NEXT_PUBLIC_NEXUS_PROGRAM_ID=NXSvFssBwGNZPpPSS5tcMqQLYbFf8yRKXBiARUdGi7Mb
 NEXT_PUBLIC_USDC_MINT=4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU
 NEXT_PUBLIC_EURC_MINT=HzwqbKZw8HxMN6bF2yFZNrht3c2iXXzpKcFu7uBEDKtr
@@ -741,7 +742,7 @@ yarn db:generate
 yarn db:push
 
 # Or run migrations (staging / production)
-yarn db:migrate
+yarn db:deploy
 ```
 
 ### Running Locally
@@ -867,15 +868,23 @@ yarn lint
 
 ### Vercel Deployment
 
-1. Import the repository into Vercel and let it detect the project as `Next.js`.
-2. Set the install command to `npm install` or `yarn install`.
-3. Set the build command to `npm run build`.
-4. Add the required environment variables in the Vercel project settings.
+#### Dashboard Flow
 
-Minimum runtime env vars:
+1. In the Vercel dashboard, click `Add New...` → `Project`.
+2. Import this repository and let Vercel detect it as `Next.js`.
+3. Before shipping the first real deployment, open `Project Settings` → `Environment Variables` and add the required secrets.
+4. In `Project Settings` → `Build & Development Settings`, use:
+   Install Command: `npm install` or `yarn install`
+   Build Command: `npm run build`
+   Output Directory: leave blank
+5. If you use Vercel-managed Postgres, create it from the dashboard first, then copy the generated `DATABASE_URL` into the project env vars before redeploying.
+6. Redeploy after env setup so the first healthy build runs with the final runtime configuration.
+
+#### Minimum Runtime Env Vars
 
 ```env
 NEXT_PUBLIC_SOLANA_RPC_URL=https://api.devnet.solana.com
+ALCHEMY_SOLANA_API_KEY=<optional_but_recommended_for_server_reads>
 NEXT_PUBLIC_NEXUS_PROGRAM_ID=<program_id>
 NEXT_PUBLIC_USDC_MINT=4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU
 NEXT_PUBLIC_EURC_MINT=HzwqbKZw8HxMN6bF2yFZNrht3c2iXXzpKcFu7uBEDKtr
@@ -896,6 +905,52 @@ KEYROCK_API_KEY=<api_key>
 SOLSTREAM_ENDPOINT=<websocket_endpoint>
 SOLSTREAM_API_KEY=<api_key>
 ```
+
+For server-side Solana reads, the app now prefers Alchemy automatically when
+one of these is present:
+
+```env
+ALCHEMY_SOLANA_API_KEY=<recommended>
+ALCHEMY_API_KEY=<also supported>
+ALCHEMY_SOLANA_RPC_URL=<full custom rpc url>
+NEXT_PUBLIC_ALCHEMY_SOLANA_RPC_URL=<full custom rpc url>
+```
+
+If none are set, the app falls back to `NEXT_PUBLIC_SOLANA_RPC_URL` and then to
+the public Solana devnet RPC.
+
+#### Required Post-Deploy Initialization
+
+Vercel will deploy the web app, but it will not automatically initialize your
+database schema or seed devnet protocol state unless you explicitly do that
+after deployment.
+
+1. Run the production database migration against the same `DATABASE_URL` used in Vercel:
+
+```bash
+npm run db:deploy
+```
+
+2. For devnet/staging environments, initialize protocol state and seed live
+dashboard activity using the same admin wallet configured in Vercel:
+
+```bash
+node --env-file=.env scripts/seed-devnet.cjs
+```
+
+3. Ensure the admin wallet in `NEXUS_ADMIN_SECRET_KEY_JSON` has enough devnet
+SOL to create accounts and submit setup transactions.
+
+4. Open the deployed app and verify:
+   `/api/dashboard/overview` returns non-zero stats
+   `/api/escrows` returns seeded instructions
+   `/api/devnet/balances` shows the connected wallet balances
+
+If you do not want seeded demo activity in a production-like environment, skip
+step 2. The protocol will still lazily initialize when the first institution
+completes KYC, but the dashboard will remain empty until real activity exists.
+
+#### CLI Alternative
 
 Deploy with the Vercel CLI:
 
@@ -919,6 +974,15 @@ If you want the server routes to sign reports, set either
 `NEXUS_ADMIN_SECRET_KEY_JSON` or `NEXUS_ADMIN_SECRET_KEY`. The inline JSON form
 is the easiest fit for Vercel because it can be copied directly from
 `nexus-deployer.json` without requiring a bundled key file.
+
+#### Recommended First-Time Order
+
+1. Create the Vercel project from the dashboard.
+2. Add all env vars, including `DATABASE_URL` and the admin wallet secret.
+3. Redeploy from the Vercel dashboard.
+4. Run `npm run db:deploy`.
+5. Run `npm run seed:devnet` from a machine that has the same env values.
+6. Open the deployed URL and complete a wallet-based smoke test.
 
 ### Production Checklist
 
